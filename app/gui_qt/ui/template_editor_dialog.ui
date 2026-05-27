@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TemplateEditorContent</class>
+ <widget class="QWidget" name="TemplateEditorContent">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>808</width>
+    <height>618</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget { background: #2b2b2b; color: #e0e0e0; }
+QPushButton { background: #3c3c3c; color: #e0e0e0; border: 1px solid #555555; padding: 4px 8px; }
+QPushButton:hover { background: #4a4a4a; }
+QLineEdit, QPlainTextEdit { background: #3c3c3c; color: #e0e0e0; border: 1px solid #555555; }
+QLabel { color: #e0e0e0; }</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>12</number>
+   </property>
+   <property name="topMargin">
+    <number>12</number>
+   </property>
+   <property name="rightMargin">
+    <number>12</number>
+   </property>
+   <property name="bottomMargin">
+    <number>12</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::FieldGrowthPolicy::AllNonFixedFieldsGrow</enum>
+     </property>
+     <property name="labelAlignment">
+      <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+     </property>
+     <property name="horizontalSpacing">
+      <number>8</number>
+     </property>
+     <property name="verticalSpacing">
+      <number>8</number>
+     </property>
+     <property name="topMargin">
+      <number>10</number>
+     </property>
+     <property name="bottomMargin">
+      <number>10</number>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="nameLabel">
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="nameEdit"/>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPlainTextEdit" name="descEdit">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>110</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QPlainTextEdit" name="cmdEdit">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>220</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <family>Menlo</family>
+         <pointsize>11</pointsize>
+        </font>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="suffixLabel">
+       <property name="text">
+        <string>Suffix</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="suffixEdit"/>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="extLabel">
+       <property name="text">
+        <string>Extension</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="extEdit"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="cmdLabel">
+       <property name="text">
+        <string>Command</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="descLabel">
+       <property name="text">
+        <string>Description</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="tipLabel">
+     <property name="text">
+      <string>Tip: use {input} and {output} placeholders.</string>
+     </property>
+    </widget>
+   </item>
+  <item>
+   <layout class="QHBoxLayout" name="bottomButtonsLayout">
+    <item>
+    <widget class="QPushButton" name="closeButton">
+     <property name="text">
+      <string>Close</string>
+     </property>
+    </widget>
+    </item>
+    <item>
+    <spacer name="bottomLeftSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+      <width>40</width>
+      <height>20</height>
+      </size>
+     </property>
+    </spacer>
+    </item>
+    <item>
+    <widget class="QPushButton" name="saveButton">
+     <property name="text">
+      <string>Save</string>
+     </property>
+    </widget>
+    </item>
+    <item>
+    <spacer name="bottomRightSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+      <width>40</width>
+      <height>20</height>
+      </size>
+     </property>
+    </spacer>
+    </item>
+    <item>
+    <widget class="QPushButton" name="visualEditorButton">
+     <property name="text">
+      <string>Visual editor...</string>
+     </property>
+    </widget>
+    </item>
+   </layout>
+  </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

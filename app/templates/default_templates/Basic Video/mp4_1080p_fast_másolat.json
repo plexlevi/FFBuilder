@@ -1,0 +1,8 @@
+{
+  "name": "MP4 Basic FullHD",
+  "desc": "FullHD stereo MP4, -18dB LUFS aac\nGood quality, optimal size",
+  "cmd": "ffmpeg -hwaccel videotoolbox -i {input} -c:v h264_videotoolbox -crf 24 -preset medium -maxrate 5M -vf scale=-1:1080 -r 30 -pix_fmt yuv420p -profile:v high -bufsize 10M -level 4.0 -c:a aac -b:a 192k -ar 48000 -ac 2 -af loudnorm=I=-18:TP=-1.5:LRA=11 -movflags +faststart {output}.mp4",
+  "output_suffix": "_conv",
+  "output_extension": "mp4",
+  "order": 3
+}

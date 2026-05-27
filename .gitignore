@@ -1,0 +1,63 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build / packaging artifacts
+build/
+dist/
+*.egg-info/
+*.spec
+!FFBuilder.spec
+*.app/
+*.dmg
+*.pkg
+*.msi
+*.exe
+
+# IDE/editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+.idea/
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+.python-version
+
+# Jupyter / local notebooks
+.ipynb_checkpoints/
+
+# Extra macOS junk
+.fseventsd
+.Spotlight-V100
+.Trashes
+
+# Local tooling artifacts
+pip-wheel-metadata/

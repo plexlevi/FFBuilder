@@ -1,0 +1,8 @@
+{
+  "name": "Fix corrupt H264",
+  "desc": "It recodes captures, that hasn't been stopped properly, causes glitches and long seeking times in video",
+  "cmd": "ffmpeg -hwaccel videotoolbox -err_detect aggressive -fflags discardcorrupt -i {input} -vf \"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2\" -c:v h264_videotoolbox -q:v 85 -profile:v high -pix_fmt yuv420p -g 250 -video_track_timescale 60000 -max_interleave_delta 0 -c:a aac -b:a 192k -movflags +faststart {output}",
+  "output_suffix": "_fix",
+  "output_extension": "mp4",
+  "order": 11
+}

@@ -1,0 +1,8 @@
+{
+  "name": "720p Nuendo",
+  "desc": "Preset for fast work in Nuendo",
+  "cmd": "ffmpeg -y -hwaccel videotoolbox -i {input} -c:v h264_videotoolbox -b:v 5000k -maxrate 8000k -pix_fmt yuv420p -profile:v main -g 1 -bufsize 10M -s 720x1280 -aspect 16:9 -level 3.1 -c:a aac -b:a 192k -ar 48000 -movflags +faststart -sn -color_range tv -color_primaries bt709 -color_trc bt709 -colorspace bt709 {output}.mov",
+  "output_suffix": "_nu",
+  "output_extension": "mov",
+  "order": 6
+}

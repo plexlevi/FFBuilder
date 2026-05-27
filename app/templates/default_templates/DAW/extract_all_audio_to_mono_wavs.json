@@ -1,0 +1,8 @@
+{
+  "name": "Extract all audio to mono WAVs",
+  "desc": "Maps all audio channel and extracts them to 48kHz, 24bit wavs",
+  "cmd": "ffmpeg -y -hwaccel videotoolbox -i {input} -vn {map_all: -c:a pcm_s24le -ar 48000}",
+  "output_suffix": "",
+  "output_extension": "wav",
+  "order": 8
+}

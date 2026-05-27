@@ -1,0 +1,90 @@
+/* Dark theme */
+
+QMainWindow, QWidget {
+    background: #2b2b2b;
+    color: #e0e0e0;
+}
+
+QLineEdit, QPlainTextEdit, QListWidget, QTreeWidget, QComboBox {
+    background: #3c3c3c;
+    color: #e0e0e0;
+    border-color: #474747;
+}
+
+QPushButton {
+    background: #3c3c3c;
+    color: #e0e0e0;
+    border-color: #474747;
+}
+
+QPushButton:hover {
+    background: #4a4a4a;
+}
+
+QSplitter::handle {
+    background: transparent;
+}
+
+QLabel {
+    color: #e0e0e0;
+}
+
+QGroupBox {
+    color: #e0e0e0;
+    border: 1px solid #474747;
+    border-radius: 6px;
+    margin-top: 18px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 8px;
+    top: -2px;
+    padding: 0 4px;
+}
+
+QProgressBar {
+    background-color: #303030;
+    color: #f0f0f0;
+    border-color: #474747;
+}
+
+QMenu {
+    background: #2b2b2b;
+    color: #e0e0e0;
+    border: 1px solid #474747;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 4px 24px 4px 10px;
+    border-radius: 4px;
+    margin: 1px 2px;
+}
+
+QMenu::item:selected {
+    background: #4a90d9;
+    color: #ffffff;
+}
+
+QMenu::separator {
+    height: 1px;
+    background: #474747;
+    margin: 3px 8px;
+}
+
+QToolTip {
+    background: #333333;
+    color: #e0e0e0;
+    border-color: #474747;
+}
+
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background: rgba(180, 180, 180, 0.30);
+}
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background: rgba(180, 180, 180, 0.55);
+}
+

@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsContent</class>
+ <widget class="QWidget" name="SettingsContent">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>520</width>
+    <height>380</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget { background: #2b2b2b; color: #e0e0e0; }
+QPushButton { background: #3c3c3c; color: #e0e0e0; border: 1px solid #555555; padding: 4px 8px; }
+QPushButton:hover { background: #4a4a4a; }
+QLineEdit { background: #3c3c3c; color: #e0e0e0; border: 1px solid #555555; }
+QGroupBox { color: #e0e0e0; border: 1px solid #555555; margin-top: 16px; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px; top: -1px; }
+QLabel { color: #e0e0e0; }
+QRadioButton { color: #e0e0e0; }
+QCheckBox { color: #e0e0e0; }</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>12</number>
+   </property>
+   <property name="topMargin">
+    <number>12</number>
+   </property>
+   <property name="rightMargin">
+    <number>12</number>
+   </property>
+   <property name="bottomMargin">
+    <number>12</number>
+   </property>
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <item>
+    <widget class="QGroupBox" name="languageGroup">
+     <property name="title">
+      <string>Interface language</string>
+     </property>
+     <layout class="QHBoxLayout" name="languageLayout">
+      <item>
+       <widget class="QLabel" name="languageLabel">
+        <property name="text">
+         <string>Language:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="languageCombo">
+        <property name="minimumWidth">
+         <number>140</number>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="languageHSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="updateGroup">
+     <property name="title">
+      <string>Updates</string>
+     </property>
+     <layout class="QVBoxLayout" name="updateLayout">
+      <item>
+       <widget class="QCheckBox" name="autoUpdateCheck">
+        <property name="text">
+         <string>Automatic update check on startup</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="layoutGroup">
+     <property name="title">
+      <string>Window layout</string>
+     </property>
+     <layout class="QVBoxLayout" name="layoutGroupLayout">
+      <item>
+       <layout class="QHBoxLayout" name="layoutRow">
+        <item>
+         <widget class="QCheckBox" name="savePanesCheck">
+          <property name="text">
+           <string>Save pane and window sizes</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="layoutHSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="resetLayoutButton">
+          <property name="text">
+           <string>Reset layout</string>
+          </property>
+          <property name="maximumWidth">
+           <number>110</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="presetsGroup">
+     <property name="title">
+      <string>Preset behavior</string>
+     </property>
+     <layout class="QVBoxLayout" name="presetsLayout">
+      <item>
+       <widget class="QCheckBox" name="autoApplyPresetCheck">
+        <property name="text">
+         <string>Automatically apply last used preset</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="soundsGroup">
+     <property name="title">
+      <string>Sound notification</string>
+     </property>
+     <layout class="QVBoxLayout" name="soundsLayout">
+      <item>
+       <widget class="QCheckBox" name="successSoundCheck">
+        <property name="text">
+         <string>On conversion complete</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="errorSoundCheck">
+        <property name="text">
+         <string>On conversion error</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="analysisGroup">
+     <property name="title">
+      <string>Analysis</string>
+     </property>
+     <layout class="QVBoxLayout" name="analysisLayout">
+      <item>
+       <widget class="QCheckBox" name="autoEbuCheck">
+        <property name="text">
+         <string>Automatic EBU analysis on file load</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="namingGroup">
+     <property name="title">
+      <string>Output filename</string>
+     </property>
+     <layout class="QVBoxLayout" name="namingLayout">
+      <item>
+       <widget class="QRadioButton" name="templateRadio">
+        <property name="text">
+         <string>Template suffix</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="customRow">
+        <item>
+         <widget class="QRadioButton" name="customRadio">
+          <property name="text">
+           <string>Custom suffix</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="customSuffixEdit">
+          <property name="placeholderText">
+           <string>pl. _converted</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="numberingRadio">
+        <property name="text">
+         <string>Numbering</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="exampleLabel">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>10</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
