@@ -76,7 +76,9 @@ class UiWiringMixin:
         self.cat_template_splitter = self._w(QSplitter, "catTemplateSplitter")
         self.categories_list = self._w(QListWidget, "categoriesListWidget")
         self.cat_template_splitter.setSizes([130, 220])
+        self.templates_details_splitter.setHandleWidth(8)
 
+        self._splitter_handle_animators: list = []
         for _spl in (
             self.main_h_splitter,
             self.main_v_splitter,
@@ -85,7 +87,7 @@ class UiWiringMixin:
             self.cat_template_splitter,
         ):
             for _i in range(1, _spl.count()):
-                _SplitterHandleAnimator(_spl.handle(_i))
+                self._splitter_handle_animators.append(_SplitterHandleAnimator(_spl.handle(_i)))
 
         self.command_preview = self._w(QPlainTextEdit, "commandPreviewTextEdit")
         self.copy_command_button = self._w(QPushButton, "copyCommandButton")
