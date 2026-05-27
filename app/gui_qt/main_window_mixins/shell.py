@@ -35,10 +35,12 @@ class ShellMixin:
         self._update_check_in_progress = True
         worker = _UpdateCheckWorker(GITHUB_REPO, APP_VERSION)
         worker.signals.finished.connect(self._on_update_check_finished)
+        self._update_check_worker = worker
         self._thread_pool.start(worker)
 
     def _on_update_check_finished(self, payload: dict) -> None:
         self._update_check_in_progress = False
+        self._update_check_worker = None
         if not payload.get("ok"):
             if getattr(self, "_update_check_retries_left", 0) > 0:
                 self._update_check_retries_left -= 1
@@ -117,10 +119,12 @@ class ShellMixin:
         self._set_status("⬇️ Frissítés letöltése és telepítése...", 0)
         worker = _UpdateInstallWorker(dmg_url, dmg_name)
         worker.signals.finished.connect(self._on_update_install_finished)
+        self._update_install_worker = worker
         self._thread_pool.start(worker)
 
     def _on_update_install_finished(self, result: dict) -> None:
         self._update_install_in_progress = False
+        self._update_install_worker = None
         if not result.get("ok"):
             err = str(result.get("error", "Ismeretlen hiba"))
             self._set_status("❌ Frissítés telepítése sikertelen", 5000)

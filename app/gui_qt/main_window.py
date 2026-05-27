@@ -105,6 +105,8 @@ class MainWindow(
         self._update_check_in_progress = False
         self._update_install_in_progress = False
         self._update_check_retries_left = 2
+        self._update_check_worker: _UpdateCheckWorker | None = None
+        self._update_install_worker: _UpdateInstallWorker | None = None
 
         self._wire_widgets()
         self._build_queue_panel()
