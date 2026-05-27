@@ -42,5 +42,16 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           files: dist/FFBuilder-*-macos.dmg
+          body: |
+            ## macOS first launch note
+
+            If macOS blocks the app after downloading from GitHub, allow it via:
+            `System Settings -> Privacy & Security -> Open Anyway`.
+
+            If needed, remove quarantine manually in Terminal:
+            `xattr -dr com.apple.quarantine /Applications/FFBuilder.app`
+
+            Then open the app with right-click -> Open.
+
           prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           generate_release_notes: true

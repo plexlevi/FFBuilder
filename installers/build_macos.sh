@@ -49,11 +49,90 @@ _ask_yes_no() {
   esac
 }
 
+_split_tag_parts() {
+  local tag="$1"
+  local normalized="${tag#v}"
+  normalized="${normalized#V}"
+
+  local core="$normalized"
+  local channel="stable"
+  if [[ "$normalized" == *-* ]]; then
+    core="${normalized%%-*}"
+    local suffix="${normalized#*-}"
+    case "$suffix" in
+      alpha.*) channel="alpha" ;;
+      beta.*) channel="beta" ;;
+      rc.*) channel="rc" ;;
+      *) channel="stable" ;;
+    esac
+  fi
+
+  local major="" minor="" patch=""
+  IFS='.' read -r major minor patch <<< "$core"
+  if [[ ! "$major" =~ ^[0-9]+$ || ! "$minor" =~ ^[0-9]+$ || ! "$patch" =~ ^[0-9]+$ ]]; then
+    return 1
+  fi
+
+  printf '%s %s %s %s\n' "$major" "$minor" "$patch" "$channel"
+}
+
+_infer_release_defaults_from_git() {
+  local default_part="patch"
+  local default_channel="alpha"
+
+  if ! git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf '%s %s\n' "$default_part" "$default_channel"
+    return
+  fi
+
+  local tags=()
+  while IFS= read -r tag; do
+    tags+=("$tag")
+    [[ "${#tags[@]}" -ge 2 ]] && break
+  done < <(git -C "$ROOT_DIR" tag --list 'v[0-9]*' --sort=-version:refname)
+
+  if [[ "${#tags[@]}" -ge 1 ]]; then
+    local parsed_latest
+    if parsed_latest="$(_split_tag_parts "${tags[0]}")"; then
+      local latest_major latest_minor latest_patch latest_channel
+      read -r latest_major latest_minor latest_patch latest_channel <<< "$parsed_latest"
+      default_channel="$latest_channel"
+
+      if [[ "${#tags[@]}" -ge 2 ]]; then
+        local parsed_prev
+        if parsed_prev="$(_split_tag_parts "${tags[1]}")"; then
+          local prev_major prev_minor prev_patch prev_channel
+          read -r prev_major prev_minor prev_patch prev_channel <<< "$parsed_prev"
+          if (( latest_major > prev_major )); then
+            default_part="major"
+          elif (( latest_minor > prev_minor )); then
+            default_part="minor"
+          else
+            default_part="patch"
+          fi
+        fi
+      fi
+    fi
+  fi
+
+  printf '%s %s\n' "$default_part" "$default_channel"
+}
+
+_init_release_defaults() {
+  local inferred
+  inferred="$(_infer_release_defaults_from_git)"
+  read -r DEFAULT_BUMP_PART DEFAULT_RELEASE_CHANNEL <<< "$inferred"
+}
+
+DEFAULT_BUMP_PART="patch"
+DEFAULT_RELEASE_CHANNEL="alpha"
+_init_release_defaults
+
 _pick_bump_part() {
-  local part="${BUMP_PART:-patch}"
+  local part="${BUMP_PART:-$DEFAULT_BUMP_PART}"
   if [[ "$is_tty" == "1" && -z "$BUMP_PART" ]]; then
-    read -r -p "Verzió emelés típusa [patch/minor/major] (alapértelmezett: patch): " part
-    part="${part:-patch}"
+    read -r -p "Verzió emelés típusa [patch/minor/major] (alapértelmezett: $DEFAULT_BUMP_PART): " part
+    part="${part:-$DEFAULT_BUMP_PART}"
   fi
   case "$part" in
     patch|minor|major)
@@ -67,10 +146,10 @@ _pick_bump_part() {
 }
 
 _pick_release_channel() {
-  local channel="${RELEASE_CHANNEL:-alpha}"
+  local channel="${RELEASE_CHANNEL:-$DEFAULT_RELEASE_CHANNEL}"
   if [[ "$is_tty" == "1" && -z "$RELEASE_CHANNEL" ]]; then
-    read -r -p "Release csatorna [stable/alpha/beta/rc] (alapértelmezett: alpha): " channel
-    channel="${channel:-alpha}"
+    read -r -p "Release csatorna [stable/alpha/beta/rc] (alapértelmezett: $DEFAULT_RELEASE_CHANNEL): " channel
+    channel="${channel:-$DEFAULT_RELEASE_CHANNEL}"
   fi
   case "$channel" in
     stable|alpha|beta|rc)
@@ -93,6 +172,10 @@ _require_clean_git_worktree() {
     echo "Working tree is not clean. Commit/stash changes before release automation."
     exit 1
   fi
+}
+
+_has_valid_codesign_identity() {
+  security find-identity -v -p codesigning 2>/dev/null | grep -q "[1-9][0-9]* valid identities found"
 }
 
 if [[ "$LEGACY_MACOS" == "1" ]]; then
@@ -140,6 +223,17 @@ if [[ -n "$ICON_PATH" ]]; then
   echo "Using icon: $ICON_PATH"
 fi
 
+# Default to ad-hoc signing unless an explicit identity is provided.
+# This avoids broken/partial signature states in distributed DMGs.
+if [[ -z "${CODESIGN_IDENTITY:-}" ]]; then
+  CODESIGN_IDENTITY="-"
+  if _has_valid_codesign_identity; then
+    echo "Using default ad-hoc signing. To use a specific identity, set CODESIGN_IDENTITY explicitly."
+  else
+    echo "No valid Apple code signing identity found. Using ad-hoc signing (CODESIGN_IDENTITY='-')."
+  fi
+fi
+
 if [[ "$MIN_MACOS" == "10.12" ]]; then
   echo "Legacy note: Sierra-compatible builds are only reliable when built with Sierra-era Python/dependencies."
 fi
@@ -158,7 +252,7 @@ case "$RELEASE_AUTOMATION" in
     DO_RELEASE_AUTOMATION=0
     ;;
   ask)
-    if _ask_yes_no "Build után automatikus release (verzió bump + tag + push)? [y/N]: " "N"; then
+    if _ask_yes_no "Build után automatikus release (verzió bump + tag + push)? [Y/n]: " "Y"; then
       DO_RELEASE_AUTOMATION=1
     fi
     ;;
@@ -282,7 +376,11 @@ xattr -cr "$APP_PATH" 2>/dev/null || true
 
 # Optional code signing (only if CODESIGN_IDENTITY is set)
 if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
-  echo "Signing app with identity: $CODESIGN_IDENTITY"
+  if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
+    echo "Signing app with ad-hoc identity (-)."
+  else
+    echo "Signing app with identity: $CODESIGN_IDENTITY"
+  fi
   if ! codesign --force --deep --sign "$CODESIGN_IDENTITY" "$APP_PATH"; then
     echo "Warning: Code signing failed, but continuing with DMG creation."
   fi
