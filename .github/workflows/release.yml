@@ -35,7 +35,7 @@ jobs:
 
       - name: Build DMG
         run: |
-          VERSION="${GITHUB_REF_NAME#v}" TARGET_ARCH=arm64 bash installers/build_macos.sh
+          RELEASE_AUTOMATION=off VERSION="${GITHUB_REF_NAME#v}" TARGET_ARCH=arm64 bash installers/build_macos.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
