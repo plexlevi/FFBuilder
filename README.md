@@ -10,7 +10,6 @@ In short: you do not have to type long command lines every time. You can work wi
 - [Who Is This For?](#who-is-this-for)
 - [Typical Workflow](#typical-workflow)
 - [Screenshots](#screenshots)
-- [Dependencies](#dependencies)
 - [Quick Start (Developer Run)](#quick-start-developer-run)
 - [Planned](#planned)
 
@@ -40,15 +39,6 @@ In short: you do not have to type long command lines every time. You can work wi
 
 Screenshots and short workflow GIFs will be added soon.
 
-## Dependencies
-
-Runtime tools:
-
-- FFmpeg
-- FFprobe
-
-If FFmpeg/FFprobe is missing, the app can install them (or you can install them manually).
-
 ## Quick Start (Developer Run)
 
 ```bash
@@ -62,5 +52,4 @@ python main.py
 
 - Installers for Windows and Linux
 - More templates
-- Better preset management
-- More export workflows
+- Multiple file operations
