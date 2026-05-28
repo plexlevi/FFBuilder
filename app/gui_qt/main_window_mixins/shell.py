@@ -52,7 +52,9 @@ class ShellMixin:
         if self._update_check_in_progress:
             _log.error("[UpdateCheck] WATCHDOG: worker did not finish in 20s – resetting in_progress flag")
             self._update_check_in_progress = False
+            self._update_check_forced = False
             self._update_check_worker = None
+            self._set_status("⚠️ Frissítés keresése sikertelen (időtúllépés)", 6000)
 
     def check_for_updates_manual(self) -> None:
         """Manuális frissítés-keresés – kihagyott verziót is megmutatja."""

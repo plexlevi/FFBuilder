@@ -4,11 +4,16 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
+import logging
 import re
+import socket
 import ssl
 import urllib.error
 import urllib.request
+
+_log = logging.getLogger(__name__)
 
 
 _SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.(\d+))?$")
@@ -50,22 +55,61 @@ def is_newer_version(current: str, candidate: str) -> bool:
 
 
 def _load_json(req: urllib.request.Request, timeout_sec: float) -> dict | list:
-    """Load JSON from URL with SSL fallback for macOS certificate-chain edge cases."""
-    try:
-        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.URLError as exc:
-        reason = exc.reason
-        cert_error = isinstance(reason, ssl.SSLCertVerificationError)
-        if not cert_error and isinstance(reason, ssl.SSLError):
-            cert_error = "CERTIFICATE_VERIFY_FAILED" in str(reason)
-        if not cert_error:
-            raise
+    """Fetch JSON with a guaranteed hard wall-clock timeout.
 
-        # Fallback: some macOS Python builds miss root cert chain configuration.
-        insecure_ctx = ssl._create_unverified_context()
-        with urllib.request.urlopen(req, timeout=timeout_sec, context=insecure_ctx) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+    On macOS in PyInstaller frozen apps, ``urllib.request.urlopen`` can hang
+    indefinitely during DNS resolution or proxy negotiation because the socket
+    ``timeout`` parameter only applies to socket I/O, NOT to ``getaddrinfo()``.
+    Wrapping the call in a ``ThreadPoolExecutor`` future with ``result(timeout=…)``
+    provides a true wall-clock limit that survives those stalls.
+
+    SSL certificate fallback is retained for macOS builds that ship without a
+    usable root-cert bundle.
+    """
+
+    def _fetch(ctx=None) -> dict | list:
+        old_default = socket.getdefaulttimeout()
+        # Belt-and-suspenders: setdefaulttimeout nudges getaddrinfo on some platforms.
+        socket.setdefaulttimeout(timeout_sec)
+        try:
+            kw: dict = {"timeout": timeout_sec}
+            if ctx is not None:
+                kw["context"] = ctx
+            _log.debug("[UpdateCheck] urlopen start (ctx=%s)", "insecure" if ctx is not None else "default")
+            with urllib.request.urlopen(req, **kw) as r:
+                data = r.read()
+            _log.debug("[UpdateCheck] urlopen done, %d bytes", len(data))
+            return json.loads(data.decode("utf-8"))
+        finally:
+            socket.setdefaulttimeout(old_default)
+
+    hard_limit = timeout_sec + 3.0
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        fut = pool.submit(_fetch)
+        try:
+            return fut.result(timeout=hard_limit)
+        except concurrent.futures.TimeoutError:
+            _log.error("[UpdateCheck] Hard timeout (%.0fs) – DNS or proxy stall suspected", hard_limit)
+            raise urllib.error.URLError(f"hard timeout after {hard_limit:.0f}s (DNS/proxy stall)")
+        except urllib.error.URLError as url_exc:
+            reason = url_exc.reason
+            is_cert = isinstance(reason, ssl.SSLCertVerificationError) or (
+                isinstance(reason, ssl.SSLError) and "CERTIFICATE_VERIFY_FAILED" in str(reason)
+            )
+            if not is_cert:
+                raise
+            # SSL cert fallback: some macOS frozen builds lack the root-cert bundle.
+            _log.warning("[UpdateCheck] SSL cert error, retrying without verification")
+            insecure_ctx = ssl._create_unverified_context()
+            fut2 = pool.submit(_fetch, insecure_ctx)
+            try:
+                return fut2.result(timeout=hard_limit)
+            except concurrent.futures.TimeoutError:
+                _log.error("[UpdateCheck] Hard timeout (no-verify) (%.0fs)", hard_limit)
+                raise urllib.error.URLError(f"hard timeout (no-verify) after {hard_limit:.0f}s")
+    finally:
+        pool.shutdown(wait=False)
 
 
 def fetch_latest_release(repo: str, timeout_sec: float = 3.0, include_prerelease: bool = True) -> dict:

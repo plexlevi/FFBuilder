@@ -31,6 +31,22 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
+# When running as a frozen .app, always write DEBUG logs to a file so issues
+# can be diagnosed without needing a terminal / rebuild.
+if getattr(sys, "frozen", False):
+    _log_path = Path.home() / "Documents" / "FFBuilder" / "debug.log"
+    try:
+        _log_path.parent.mkdir(parents=True, exist_ok=True)
+        _fh = logging.FileHandler(str(_log_path), mode="w", encoding="utf-8")
+        _fh.setLevel(logging.DEBUG)
+        _fh.setFormatter(logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%H:%M:%S"
+        ))
+        logging.getLogger().addHandler(_fh)
+        logging.getLogger().setLevel(logging.DEBUG)
+    except Exception:
+        pass  # Never crash the app over logging setup
+
 from PySide6.QtGui import QFont, QFontDatabase, QPalette
 from PySide6.QtWidgets import QApplication, QMessageBox
 
