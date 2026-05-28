@@ -253,9 +253,15 @@ class _SplitterHandleAnimator(QObject):
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # type: ignore[override]
         if obj is self._handle:
             t = event.type()
-            if t == QEvent.Type.HoverEnter:
+            if t == QEvent.Type.Show:
+                # Re-apply WA_Hover when the widget becomes visible.
+                # Needed for handles inside non-active tabs at startup:
+                # WA_Hover set on a hidden widget may not register with the
+                # native macOS tracking layer until the widget is shown.
+                self._handle.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+            elif t in (QEvent.Type.HoverEnter, QEvent.Type.Enter):
                 self._fade(255.0)
-            elif t == QEvent.Type.HoverLeave:
+            elif t in (QEvent.Type.HoverLeave, QEvent.Type.Leave):
                 self._fade(0.0)
             elif t == QEvent.Type.Paint:
                 color = QColor(self._COLOR)
