@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 from PySide6.QtCore import QEvent, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QColor, QIcon, QPalette
@@ -27,38 +30,59 @@ class ShellMixin:
 
     def _maybe_check_for_updates(self) -> None:
         settings = settings_manager.get_settings()
-        if not settings.get("auto_check_updates", True):
+        auto = settings.get("auto_check_updates", True)
+        _log.debug("[UpdateCheck] _maybe_check_for_updates: auto=%s in_progress=%s", auto, self._update_check_in_progress)
+        if not auto:
             return
         if self._update_check_in_progress:
+            _log.warning("[UpdateCheck] Skipped – already in progress (possible stuck state)")
             return
 
         self._update_check_in_progress = True
-        worker = _UpdateCheckWorker(GITHUB_REPO, APP_VERSION)
+        worker = _UpdateCheckWorker(GITHUB_REPO, getattr(self, "_effective_version", APP_VERSION))
         worker.signals.finished.connect(self._on_update_check_finished)
         self._update_check_worker = worker
+        # Safety watchdog: if the worker never responds in 20s, reset the flag
+        QTimer.singleShot(20_000, self._update_check_watchdog)
+        _log.debug("[UpdateCheck] Worker started")
         self._thread_pool.start(worker)
+
+    def _update_check_watchdog(self) -> None:
+        """Reset stuck in_progress flag if the worker never delivered a result."""
+        if self._update_check_in_progress:
+            _log.error("[UpdateCheck] WATCHDOG: worker did not finish in 20s – resetting in_progress flag")
+            self._update_check_in_progress = False
+            self._update_check_worker = None
 
     def check_for_updates_manual(self) -> None:
         """Manuális frissítés-keresés – kihagyott verziót is megmutatja."""
+        _log.debug("[UpdateCheck] Manual check requested. in_progress=%s", self._update_check_in_progress)
         self._update_check_forced = True
         if self._update_check_in_progress:
             self._set_status("🔄 Frissítés keresése folyamatban...", 3000)
             return
         self._update_check_in_progress = True
         self._set_status("🔄 Frissítés keresése...", 0)
-        worker = _UpdateCheckWorker(GITHUB_REPO, APP_VERSION)
+        worker = _UpdateCheckWorker(GITHUB_REPO, getattr(self, "_effective_version", APP_VERSION))
         worker.signals.finished.connect(self._on_update_check_finished)
         self._update_check_worker = worker
+        # Safety watchdog: if the worker never responds in 20s, reset the flag
+        QTimer.singleShot(20_000, self._update_check_watchdog)
+        _log.debug("[UpdateCheck] Manual worker started")
         self._thread_pool.start(worker)
 
     def _on_update_check_finished(self, payload: dict) -> None:
         forced = getattr(self, "_update_check_forced", False)
+        _log.debug("[UpdateCheck] _on_update_check_finished: ok=%s forced=%s update_available=%s error=%s",
+                   payload.get("ok"), forced, payload.get("update_available"), payload.get("error"))
         self._update_check_forced = False
         self._update_check_in_progress = False
         self._update_check_worker = None  # Release reference; safe: signal already delivered
         if not payload.get("ok"):
+            _log.warning("[UpdateCheck] Check failed: %s", payload.get("error"))
             if getattr(self, "_update_check_retries_left", 0) > 0:
                 self._update_check_retries_left -= 1
+                _log.debug("[UpdateCheck] Scheduling retry, retries_left=%s", self._update_check_retries_left)
                 QTimer.singleShot(30_000, self._maybe_check_for_updates)
             return
         if not payload.get("update_available"):

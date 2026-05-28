@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QRunnable, Signal
+
+_log = logging.getLogger(__name__)
 
 from app.services.media.file_info_service import extract_info
 from app.services.media.hardware_detector import HardwareDetector
@@ -109,15 +112,24 @@ class _UpdateCheckWorker(QRunnable):
         self.signals = _UpdateCheckWorkerSignals()
 
     def run(self) -> None:
-        payload = fetch_latest_release(self._repo, timeout_sec=10.0)
-        if not payload.get("ok"):
-            self.signals.finished.emit(payload)
-            return
+        _log.debug("[UpdateCheck] Worker started – repo=%s current=%s", self._repo, self._current_version)
+        try:
+            payload = fetch_latest_release(self._repo, timeout_sec=10.0)
+            _log.debug("[UpdateCheck] fetch_latest_release returned: ok=%s error=%s latest=%s",
+                       payload.get("ok"), payload.get("error"), payload.get("latest_version"))
+            if not payload.get("ok"):
+                self.signals.finished.emit(payload)
+                return
 
-        latest_version = str(payload.get("latest_version", ""))
-        payload["current_version"] = self._current_version
-        payload["update_available"] = is_newer_version(self._current_version, latest_version)
-        self.signals.finished.emit(payload)
+            latest_version = str(payload.get("latest_version", ""))
+            payload["current_version"] = self._current_version
+            payload["update_available"] = is_newer_version(self._current_version, latest_version)
+            _log.debug("[UpdateCheck] update_available=%s (current=%s latest=%s)",
+                       payload["update_available"], self._current_version, latest_version)
+            self.signals.finished.emit(payload)
+        except Exception as exc:
+            _log.exception("[UpdateCheck] Unhandled exception in worker – signal will still fire")
+            self.signals.finished.emit({"ok": False, "error": f"Unhandled exception: {exc}"})
 
 
 class _UpdateInstallWorkerSignals(QObject):

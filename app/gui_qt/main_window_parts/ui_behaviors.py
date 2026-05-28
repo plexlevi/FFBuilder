@@ -230,6 +230,7 @@ class _SplitterHandleAnimator(QObject):
     def __init__(self, handle: QWidget) -> None:
         super().__init__(handle)
         self._handle = handle
+        self._alive: bool = True
         self._alpha: float = 0.0
         self._start: float = 0.0
         self._target: float = 0.0
@@ -245,13 +246,28 @@ class _SplitterHandleAnimator(QObject):
         self._poll_timer.timeout.connect(self._poll_hover)
         self._poll_timer.start()
 
+        # Stop timers as soon as the underlying C++ widget is destroyed.
+        handle.destroyed.connect(self._on_handle_destroyed)
+
+    def _on_handle_destroyed(self) -> None:
+        self._alive = False
+        self._poll_timer.stop()
+        self._fade_timer.stop()
+
     def _poll_hover(self) -> None:
         """Check whether the cursor is over the handle and trigger fade."""
-        if not self._handle.isVisible():
+        if not self._alive:
             return
-        cursor_pos = QCursor.pos()
-        top_left = self._handle.mapToGlobal(QPoint(0, 0))
-        handle_rect = QRect(top_left, self._handle.size())
+        try:
+            if not self._handle.isVisible():
+                return
+            cursor_pos = QCursor.pos()
+            top_left = self._handle.mapToGlobal(QPoint(0, 0))
+            handle_rect = QRect(top_left, self._handle.size())
+        except RuntimeError:
+            # C++ object deleted without the destroyed signal firing (edge case).
+            self._on_handle_destroyed()
+            return
         is_over = handle_rect.contains(cursor_pos)
         if is_over and not self._is_hovered:
             self._is_hovered = True
@@ -268,6 +284,9 @@ class _SplitterHandleAnimator(QObject):
             self._fade_timer.start()
 
     def _step(self) -> None:
+        if not self._alive:
+            self._fade_timer.stop()
+            return
         self._elapsed += self._INTERVAL_MS
         t = min(self._elapsed / self._DURATION_MS, 1.0)
         t = 2 * t * t if t < 0.5 else 1.0 - (-2 * t + 2) ** 2 / 2
@@ -279,10 +298,15 @@ class _SplitterHandleAnimator(QObject):
             self._fade_timer.stop()
 
     def _apply_style(self) -> None:
-        a = int(self._alpha)
-        if a <= 0:
-            self._handle.setStyleSheet("QSplitterHandle { background: transparent; }")
-        else:
-            self._handle.setStyleSheet(
-                f"QSplitterHandle {{ background: rgba({self._R},{self._G},{self._B},{a}); }}"
-            )
+        if not self._alive:
+            return
+        try:
+            a = int(self._alpha)
+            if a <= 0:
+                self._handle.setStyleSheet("QSplitterHandle { background: transparent; }")
+            else:
+                self._handle.setStyleSheet(
+                    f"QSplitterHandle {{ background: rgba({self._R},{self._G},{self._B},{a}); }}"
+                )
+        except RuntimeError:
+            self._on_handle_destroyed()

@@ -1,8 +1,35 @@
 #!/usr/bin/env python 
 # -*- coding: utf-8 -*- 
 """Run the FFBuilder GUI (Qt/PySide6)."""
+import argparse
+import logging
 import sys
 from pathlib import Path
+
+# Parse CLI flags early – before Qt and imports that read APP_VERSION.
+_parser = argparse.ArgumentParser(add_help=False)
+_parser.add_argument(
+    "--fake-version",
+    metavar="VER",
+    default=None,
+    help="Pretend the app is this version for the update check (e.g. 0.1.0). "
+         "Useful for testing the update dialog without pushing a new GitHub release.",
+)
+_parser.add_argument(
+    "--log-level",
+    metavar="LEVEL",
+    default="WARNING",
+    help="Logging level: DEBUG, INFO, WARNING, ERROR (default: WARNING).",
+)
+_known, _remaining = _parser.parse_known_args()
+# Leave only unknown args for Qt so it doesn't choke on ours.
+sys.argv = [sys.argv[0]] + _remaining
+
+logging.basicConfig(
+    level=getattr(logging, _known.log_level.upper(), logging.WARNING),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 from PySide6.QtGui import QFont, QFontDatabase, QPalette
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -19,6 +46,15 @@ from app.services.ffmpeg.manager import find_binaries
 from app.shared.i18n import install_i18n, trs
 from app.shared.version import APP_NAME, APP_VERSION
 from app.shared.utils.theme import is_dark_mode, init_accent
+
+# --fake-version overrides the version string used by the update checker only.
+_EFFECTIVE_VERSION = _known.fake_version if _known.fake_version else APP_VERSION
+if _known.fake_version:
+    import logging as _lg
+    _lg.getLogger(__name__).warning(
+        "[UpdateCheck] --fake-version active: pretending to be v%s (real: v%s)",
+        _known.fake_version, APP_VERSION,
+    )
 
 
 
@@ -70,7 +106,7 @@ def main() -> int:
         tuffy.setPointSize(app.font().pointSize())
         app.setFont(tuffy)
 
-    window = MainWindow()
+    window = MainWindow(effective_version=_EFFECTIVE_VERSION)
     window.show()
 
     if not _check_ffmpeg_available():

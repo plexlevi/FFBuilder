@@ -62,13 +62,15 @@ class MainWindow(
 ):
     """Qt main window for FFBuilder."""
 
-    def __init__(self) -> None:
+    def __init__(self, effective_version: str | None = None) -> None:
         super().__init__()
         self._ui = Ui_MainWindow()
         self._ui.setupUi(self)
         self.setWindowTitle(app_window_title())
         # Make the status bar content widget fill the full width dynamically
         self._ui.statusbar.addPermanentWidget(self._ui.statusBarContentWidget, 1)
+
+        self._effective_version: str = effective_version or APP_VERSION
 
         self.files: list[dict] = []
         self.current_file_info: dict = {}
