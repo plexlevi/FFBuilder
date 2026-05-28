@@ -3,7 +3,7 @@
 """Application version metadata."""
 
 APP_NAME = "FFBuilder"
-APP_VERSION = "0.4.14"
+APP_VERSION = "0.4.15"
 GITHUB_REPO = "plexlevi/FFBuilder"
 GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPO}/releases"
 
