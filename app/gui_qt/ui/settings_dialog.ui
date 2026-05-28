@@ -80,14 +80,41 @@ QCheckBox { color: #e0e0e0; }</string>
      </property>
      <layout class="QVBoxLayout" name="updateLayout">
       <item>
-       <widget class="QCheckBox" name="autoUpdateCheck">
-        <property name="text">
-         <string>Automatic update check on startup</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="updateRow">
+        <item>
+         <widget class="QCheckBox" name="autoUpdateCheck">
+          <property name="text">
+           <string>Automatic update check on startup</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="updateHSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="checkUpdatesButton">
+          <property name="text">
+           <string>Check now</string>
+          </property>
+          <property name="maximumWidth">
+           <number>110</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>

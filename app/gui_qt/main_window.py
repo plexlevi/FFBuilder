@@ -104,6 +104,7 @@ class MainWindow(
         self._pending_metadata_paths: set[str] = set()
         self._update_check_in_progress = False
         self._update_install_in_progress = False
+        self._update_check_forced = False
         self._update_check_retries_left = 2
         self._update_check_worker: _UpdateCheckWorker | None = None
         self._update_install_worker: _UpdateInstallWorker | None = None

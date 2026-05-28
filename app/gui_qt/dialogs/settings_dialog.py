@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QFile
+from PySide6.QtCore import QFile, Signal
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import (
     QPushButton,
@@ -29,6 +29,8 @@ _LANG_DISPLAY: dict[str, str] = {
 
 
 class SettingsDialog(QDialog):
+    check_updates_requested = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(trs("⚙  Settings"))
@@ -64,11 +66,13 @@ class SettingsDialog(QDialog):
         self.save_panes_check = w.findChild(QCheckBox, "savePanesCheck")
         self.auto_ebu_check = w.findChild(QCheckBox, "autoEbuCheck")
         self.auto_update_check = w.findChild(QCheckBox, "autoUpdateCheck")
+        self.check_updates_button = w.findChild(QPushButton, "checkUpdatesButton")
         self.reset_layout_button = w.findChild(QPushButton, "resetLayoutButton")
         self.language_combo = w.findChild(QComboBox, "languageCombo")
         self._populate_language_combo()
 
         self.reset_layout_button.clicked.connect(self._request_layout_reset)
+        self.check_updates_button.clicked.connect(self.check_updates_requested.emit)
         self.language_combo.currentIndexChanged.connect(self._on_settings_changed)
         self.template_radio.toggled.connect(self._update_example)
         self.custom_radio.toggled.connect(self._update_example)

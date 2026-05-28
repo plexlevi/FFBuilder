@@ -191,6 +191,7 @@ class RunFlowMixin:
 
     def _open_settings(self) -> None:
         dlg = SettingsDialog(parent=self)
+        dlg.check_updates_requested.connect(self.check_for_updates_manual)
         dlg.exec()
         if dlg.reset_layout_requested:
             self.main_h_splitter.setSizes([320, 820])

@@ -38,7 +38,22 @@ class ShellMixin:
         self._update_check_worker = worker
         self._thread_pool.start(worker)
 
+    def check_for_updates_manual(self) -> None:
+        """Manuális frissítés-keresés – kihagyott verziót is megmutatja."""
+        self._update_check_forced = True
+        if self._update_check_in_progress:
+            self._set_status("🔄 Frissítés keresése folyamatban...", 3000)
+            return
+        self._update_check_in_progress = True
+        self._set_status("🔄 Frissítés keresése...", 0)
+        worker = _UpdateCheckWorker(GITHUB_REPO, APP_VERSION)
+        worker.signals.finished.connect(self._on_update_check_finished)
+        self._update_check_worker = worker
+        self._thread_pool.start(worker)
+
     def _on_update_check_finished(self, payload: dict) -> None:
+        forced = getattr(self, "_update_check_forced", False)
+        self._update_check_forced = False
         self._update_check_in_progress = False
         self._update_check_worker = None  # Release reference; safe: signal already delivered
         if not payload.get("ok"):
@@ -59,7 +74,7 @@ class ShellMixin:
 
         settings = settings_manager.get_settings()
         skipped = str(settings.get("skip_update_version", "")).strip()
-        if skipped == latest_version:
+        if skipped == latest_version and not forced:
             self._set_status(f"ℹ️ v{latest_version} kihagyva", 3000)
             return
 
