@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QEvent, QObject, QTimer, Qt
-from PySide6.QtGui import QColor, QGuiApplication, QPainter
+from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QTimer, Qt
+from PySide6.QtGui import QColor, QCursor, QGuiApplication, QPainter
 from PySide6.QtWidgets import QListWidget, QWidget
 
 
@@ -212,9 +212,15 @@ class _CategoryDropFilter(QObject):
 
 
 class _SplitterHandleAnimator(QObject):
-    """Fades a splitter handle colour on hover via QPainter (bypasses QSS)."""
+    """Fades a splitter handle colour on hover via QPainter (bypasses QSS).
 
-    _INTERVAL_MS = 16
+    Uses cursor-position polling instead of WA_Hover / native tracking
+    rectangles so hover detection works reliably for handles that live inside
+    non-initially-visible widgets (hidden tabs, etc.) on all platforms.
+    """
+
+    _POLL_MS = 50        # hover detection poll interval
+    _INTERVAL_MS = 16    # animation frame rate (~60 fps)
     _DURATION_MS = 200.0
     _COLOR = QColor(74, 144, 217)
 
@@ -225,20 +231,40 @@ class _SplitterHandleAnimator(QObject):
         self._start: float = 0.0
         self._target: float = 0.0
         self._elapsed: float = 0.0
+        self._is_hovered: bool = False
 
-        handle.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         handle.installEventFilter(self)
 
-        self._timer = QTimer(self)
-        self._timer.setInterval(self._INTERVAL_MS)
-        self._timer.timeout.connect(self._step)
+        self._fade_timer = QTimer(self)
+        self._fade_timer.setInterval(self._INTERVAL_MS)
+        self._fade_timer.timeout.connect(self._step)
+
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(self._POLL_MS)
+        self._poll_timer.timeout.connect(self._poll_hover)
+        self._poll_timer.start()
+
+    def _poll_hover(self) -> None:
+        """Check whether the cursor is over the handle and trigger fade."""
+        if not self._handle.isVisible():
+            return
+        cursor_pos = QCursor.pos()
+        top_left = self._handle.mapToGlobal(QPoint(0, 0))
+        handle_rect = QRect(top_left, self._handle.size())
+        is_over = handle_rect.contains(cursor_pos)
+        if is_over and not self._is_hovered:
+            self._is_hovered = True
+            self._fade(255.0)
+        elif not is_over and self._is_hovered:
+            self._is_hovered = False
+            self._fade(0.0)
 
     def _fade(self, target: float) -> None:
         self._start = self._alpha
         self._target = target
         self._elapsed = 0.0
-        if not self._timer.isActive():
-            self._timer.start()
+        if not self._fade_timer.isActive():
+            self._fade_timer.start()
 
     def _step(self) -> None:
         self._elapsed += self._INTERVAL_MS
@@ -248,26 +274,14 @@ class _SplitterHandleAnimator(QObject):
         self._handle.update()
         if self._elapsed >= self._DURATION_MS:
             self._alpha = self._target
-            self._timer.stop()
+            self._fade_timer.stop()
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # type: ignore[override]
-        if obj is self._handle:
-            t = event.type()
-            if t == QEvent.Type.Show:
-                # Re-apply WA_Hover when the widget becomes visible.
-                # Needed for handles inside non-active tabs at startup:
-                # WA_Hover set on a hidden widget may not register with the
-                # native macOS tracking layer until the widget is shown.
-                self._handle.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-            elif t in (QEvent.Type.HoverEnter, QEvent.Type.Enter):
-                self._fade(255.0)
-            elif t in (QEvent.Type.HoverLeave, QEvent.Type.Leave):
-                self._fade(0.0)
-            elif t == QEvent.Type.Paint:
-                color = QColor(self._COLOR)
-                color.setAlpha(int(self._alpha))
-                painter = QPainter(self._handle)
-                painter.fillRect(self._handle.rect(), color)
-                painter.end()
-                return True
+        if obj is self._handle and event.type() == QEvent.Type.Paint:
+            color = QColor(self._COLOR)
+            color.setAlpha(int(self._alpha))
+            painter = QPainter(self._handle)
+            painter.fillRect(self._handle.rect(), color)
+            painter.end()
+            return True
         return False
