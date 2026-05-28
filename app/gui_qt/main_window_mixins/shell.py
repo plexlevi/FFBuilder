@@ -40,7 +40,7 @@ class ShellMixin:
 
     def _on_update_check_finished(self, payload: dict) -> None:
         self._update_check_in_progress = False
-        self._update_check_worker = None
+        self._update_check_worker = None  # Release reference; safe: signal already delivered
         if not payload.get("ok"):
             if getattr(self, "_update_check_retries_left", 0) > 0:
                 self._update_check_retries_left -= 1
@@ -124,7 +124,7 @@ class ShellMixin:
 
     def _on_update_install_finished(self, result: dict) -> None:
         self._update_install_in_progress = False
-        self._update_install_worker = None
+        self._update_install_worker = None  # Release before blocking calls
         if not result.get("ok"):
             err = str(result.get("error", "Ismeretlen hiba"))
             self._set_status("❌ Frissítés telepítése sikertelen", 5000)

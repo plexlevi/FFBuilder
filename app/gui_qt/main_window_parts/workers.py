@@ -103,6 +103,7 @@ class _UpdateCheckWorkerSignals(QObject):
 class _UpdateCheckWorker(QRunnable):
     def __init__(self, repo: str, current_version: str) -> None:
         super().__init__()
+        self.setAutoDelete(False)  # Prevent Qt from deleting the C++ object before Python GC
         self._repo = repo
         self._current_version = current_version
         self.signals = _UpdateCheckWorkerSignals()
@@ -126,6 +127,7 @@ class _UpdateInstallWorkerSignals(QObject):
 class _UpdateInstallWorker(QRunnable):
     def __init__(self, dmg_url: str, dmg_name: str) -> None:
         super().__init__()
+        self.setAutoDelete(False)  # Prevent Qt from deleting the C++ object before Python GC
         self._dmg_url = dmg_url
         self._dmg_name = dmg_name
         self.signals = _UpdateInstallWorkerSignals()
