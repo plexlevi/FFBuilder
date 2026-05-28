@@ -281,8 +281,8 @@ class _SplitterHandleAnimator(QObject):
     def _apply_style(self) -> None:
         a = int(self._alpha)
         if a <= 0:
-            self._handle.setStyleSheet("")
+            self._handle.setStyleSheet("QSplitterHandle { background: transparent; }")
         else:
             self._handle.setStyleSheet(
-                f"background: rgba({self._R},{self._G},{self._B},{a});"
+                f"QSplitterHandle {{ background: rgba({self._R},{self._G},{self._B},{a}); }}"
             )

@@ -21,10 +21,6 @@ QPushButton:hover {
     background: #4a4a4a;
 }
 
-QSplitter::handle {
-    background: transparent;
-}
-
 QLabel {
     color: #e0e0e0;
 }

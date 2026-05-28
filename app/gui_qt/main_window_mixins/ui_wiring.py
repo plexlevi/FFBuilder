@@ -76,7 +76,6 @@ class UiWiringMixin:
         self.cat_template_splitter = self._w(QSplitter, "catTemplateSplitter")
         self.categories_list = self._w(QListWidget, "categoriesListWidget")
         self.cat_template_splitter.setSizes([130, 220])
-        self.templates_details_splitter.setHandleWidth(8)
 
         self._splitter_handle_animators: list = []
         for _spl in (
