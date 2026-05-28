@@ -47,6 +47,10 @@ class ShellMixin:
                 QTimer.singleShot(30_000, self._maybe_check_for_updates)
             return
         if not payload.get("update_available"):
+            # Silently confirm in status bar so the user can see the check ran
+            latest = str(payload.get("latest_version", "")).strip()
+            if latest:
+                self._set_status(f"✓ Naprakész (v{latest})", 4000)
             return
 
         latest_version = str(payload.get("latest_version", "")).strip()
@@ -56,6 +60,7 @@ class ShellMixin:
         settings = settings_manager.get_settings()
         skipped = str(settings.get("skip_update_version", "")).strip()
         if skipped == latest_version:
+            self._set_status(f"ℹ️ v{latest_version} kihagyva", 3000)
             return
 
         html_url = str(payload.get("html_url", "")).strip() or GITHUB_RELEASES_URL
@@ -98,6 +103,8 @@ class ShellMixin:
         later_btn = msg.addButton("Később", QMessageBox.ButtonRole.RejectRole)
         skip_btn = msg.addButton("Verzió kihagyása", QMessageBox.ButtonRole.DestructiveRole)
         msg.setDefaultButton(install_btn or later_btn)
+        self.raise_()
+        self.activateWindow()
         msg.exec()
 
         clicked = msg.clickedButton()

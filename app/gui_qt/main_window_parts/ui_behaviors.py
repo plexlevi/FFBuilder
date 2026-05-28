@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QTimer, Qt
-from PySide6.QtGui import QColor, QCursor, QGuiApplication, QPainter
+from PySide6.QtGui import QCursor, QGuiApplication
 from PySide6.QtWidgets import QListWidget, QWidget
 
 
@@ -212,17 +212,20 @@ class _CategoryDropFilter(QObject):
 
 
 class _SplitterHandleAnimator(QObject):
-    """Fades a splitter handle colour on hover via QPainter (bypasses QSS).
+    """Fades a splitter handle colour on hover via setStyleSheet.
 
     Uses cursor-position polling instead of WA_Hover / native tracking
     rectangles so hover detection works reliably for handles that live inside
     non-initially-visible widgets (hidden tabs, etc.) on all platforms.
+
+    Uses setStyleSheet instead of QPainter/eventFilter to avoid conflicts
+    with Qt's QSS-styled paint pipeline on macOS.
     """
 
     _POLL_MS = 50        # hover detection poll interval
     _INTERVAL_MS = 16    # animation frame rate (~60 fps)
     _DURATION_MS = 200.0
-    _COLOR = QColor(74, 144, 217)
+    _R, _G, _B = 74, 144, 217  # blue accent
 
     def __init__(self, handle: QWidget) -> None:
         super().__init__(handle)
@@ -232,8 +235,6 @@ class _SplitterHandleAnimator(QObject):
         self._target: float = 0.0
         self._elapsed: float = 0.0
         self._is_hovered: bool = False
-
-        handle.installEventFilter(self)
 
         self._fade_timer = QTimer(self)
         self._fade_timer.setInterval(self._INTERVAL_MS)
@@ -271,17 +272,17 @@ class _SplitterHandleAnimator(QObject):
         t = min(self._elapsed / self._DURATION_MS, 1.0)
         t = 2 * t * t if t < 0.5 else 1.0 - (-2 * t + 2) ** 2 / 2
         self._alpha = self._start + (self._target - self._start) * t
-        self._handle.update()
+        self._apply_style()
         if self._elapsed >= self._DURATION_MS:
             self._alpha = self._target
+            self._apply_style()
             self._fade_timer.stop()
 
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # type: ignore[override]
-        if obj is self._handle and event.type() == QEvent.Type.Paint:
-            color = QColor(self._COLOR)
-            color.setAlpha(int(self._alpha))
-            painter = QPainter(self._handle)
-            painter.fillRect(self._handle.rect(), color)
-            painter.end()
-            return True
-        return False
+    def _apply_style(self) -> None:
+        a = int(self._alpha)
+        if a <= 0:
+            self._handle.setStyleSheet("")
+        else:
+            self._handle.setStyleSheet(
+                f"background: rgba({self._R},{self._G},{self._B},{a});"
+            )
