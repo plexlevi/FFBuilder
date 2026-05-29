@@ -61,3 +61,5 @@ dist/
 
 # Local tooling artifacts
 pip-wheel-metadata/
+
+.github/
