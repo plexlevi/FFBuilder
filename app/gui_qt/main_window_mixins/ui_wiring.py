@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QTreeWidget,
 )
 
-from app.gui_qt.main_window_parts import _CategoryDropFilter, _SplitterHandleAnimator
+from app.gui_qt.main_window_parts import _CategoryDropFilter, _install_splitter_dots
 
 
 class _ComboBoxWheelGuard(QObject):
@@ -77,7 +77,7 @@ class UiWiringMixin:
         self.categories_list = self._w(QListWidget, "categoriesListWidget")
         self.cat_template_splitter.setSizes([130, 220])
 
-        self._splitter_handle_animators: list = []
+        self._splitter_dots: list = []
         for _spl in (
             self.main_h_splitter,
             self.main_v_splitter,
@@ -85,8 +85,7 @@ class UiWiringMixin:
             self.templates_details_splitter,
             self.cat_template_splitter,
         ):
-            for _i in range(1, _spl.count()):
-                self._splitter_handle_animators.append(_SplitterHandleAnimator(_spl.handle(_i)))
+            self._splitter_dots.extend(_install_splitter_dots(_spl))
 
         self.command_preview = self._w(QPlainTextEdit, "commandPreviewTextEdit")
         self.copy_command_button = self._w(QPushButton, "copyCommandButton")

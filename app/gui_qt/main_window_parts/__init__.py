@@ -56,7 +56,7 @@ from .template_output_helpers import (
     template_output_suffix,
     update_output_path_extension,
 )
-from .ui_behaviors import _CategoryDropFilter, _SplitterHandleAnimator, resolve_notification_sound_path
+from .ui_behaviors import _CategoryDropFilter, _install_splitter_dots, resolve_notification_sound_path
 from .workers import (
     _HardwareStatusWorker,
     _LoudnessWorker,
@@ -72,7 +72,7 @@ __all__ = [
     "_HardwareStatusWorker",
     "_LoudnessWorker",
     "_MetadataWorker",
-    "_SplitterHandleAnimator",
+    "_install_splitter_dots",
     "_UpdateCheckWorker",
     "_UpdateInstallWorker",
     "apply_finish_result_to_progress_bar",
