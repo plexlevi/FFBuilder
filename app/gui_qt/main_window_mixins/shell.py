@@ -118,7 +118,6 @@ class ShellMixin:
             msg.setWindowTitle("Frissítés elérhető")
             msg.setTextFormat(Qt.TextFormat.RichText)
             msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-            msg.setOpenExternalLinks(True)
             text = (
                 f"<b>Új verzió érhető el: v{latest_version}</b><br>"
                 f"Jelenlegi verzió: v{APP_VERSION}<br><br>"
