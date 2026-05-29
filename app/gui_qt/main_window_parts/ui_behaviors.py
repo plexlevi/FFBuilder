@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QTimer, Qt
-from PySide6.QtGui import QColor, QGuiApplication, QPainter
+from PySide6.QtGui import QColor, QGuiApplication, QPainter, QPalette
 from PySide6.QtWidgets import QListWidget, QSplitter, QWidget
 
 from app.shared.utils.theme import is_dark_mode
@@ -239,6 +239,9 @@ class _SplitterGripDots(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
+        # Cover the entire handle with the window background — hides Fusion's grip marks
+        bg = self.palette().color(QPalette.ColorRole.Window)
+        p.fillRect(self.rect(), bg)
         dot_color = QColor(180, 180, 185) if is_dark_mode() else QColor(50, 50, 55)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(dot_color)
@@ -264,7 +267,5 @@ def _install_splitter_dots(splitter: QSplitter) -> list[_SplitterGripDots]:
     dots: list[_SplitterGripDots] = []
     for i in range(1, splitter.count()):
         handle = splitter.handle(i)
-        # Suppress Fusion's own grip marks by setting a transparent stylesheet
-        handle.setStyleSheet("background-color: transparent;")
         dots.append(_SplitterGripDots(handle))
     return dots
