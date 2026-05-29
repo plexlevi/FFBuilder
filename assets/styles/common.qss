@@ -27,11 +27,11 @@ QToolTip {
 }
 
 QSplitter::handle:horizontal {
-    width: 6px;
+    width: 10px;
 }
 
 QSplitter::handle:vertical {
-    height: 6px;
+    height: 10px;
 }
 
 QProgressBar {

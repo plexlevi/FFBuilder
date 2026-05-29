@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QTimer, Qt
-from PySide6.QtGui import QCursor, QGuiApplication
+from PySide6.QtGui import QColor, QCursor, QGuiApplication, QPainter
 from PySide6.QtWidgets import QListWidget, QWidget
+
+from app.shared.utils.theme import is_dark_mode
 
 
 def resolve_notification_sound_path(root_dir: Path, kind: str, settings: dict[str, Any]) -> str | None:
@@ -211,15 +213,51 @@ class _CategoryDropFilter(QObject):
         return False
 
 
+class _DotsWidget(QWidget):
+    """Transparent child widget that paints grip dots on top of a QSplitterHandle.
+
+    Subclasses QWidget so Qt calls paintEvent() through the normal C++ vtable
+    — guaranteed to work on all platforms, unlike painting from an event filter.
+    """
+
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.setAutoFillBackground(False)
+        self.resize(parent.size())
+        self.raise_()
+
+    def paintEvent(self, event) -> None:  # type: ignore[override]
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w, h = self.width(), self.height()
+
+        dot_color = QColor(180, 180, 185) if is_dark_mode() else QColor(40, 40, 45)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(dot_color)
+
+        n, d, gap = 4, 2, 3  # 4 dots, 2px diameter, 3px gap
+        if w <= h:  # vertical strip — dots stacked vertically
+            total = n * d + (n - 1) * gap
+            x0 = (w - d) // 2
+            y0 = (h - total) // 2
+            for i in range(n):
+                p.drawEllipse(x0, y0 + i * (d + gap), d, d)
+        else:  # horizontal strip — dots arranged horizontally
+            total = n * d + (n - 1) * gap
+            x0 = (w - total) // 2
+            y0 = (h - d) // 2
+            for i in range(n):
+                p.drawEllipse(x0 + i * (d + gap), y0, d, d)
+        p.end()
+
+
 class _SplitterHandleAnimator(QObject):
-    """Fades a splitter handle colour on hover via setStyleSheet.
+    """Animates a hover glow on a QSplitter handle and draws grip dots.
 
-    Uses cursor-position polling instead of WA_Hover / native tracking
-    rectangles so hover detection works reliably for handles that live inside
-    non-initially-visible widgets (hidden tabs, etc.) on all platforms.
-
-    Uses setStyleSheet instead of QPainter/eventFilter to avoid conflicts
-    with Qt's QSS-styled paint pipeline on macOS.
+    Hover glow: setStyleSheet on the handle (background-color rgba).
+    Dots: _DotsWidget child, painted via a proper Python paintEvent subclass.
     """
 
     _POLL_MS = 50        # hover detection poll interval
@@ -237,6 +275,10 @@ class _SplitterHandleAnimator(QObject):
         self._elapsed: float = 0.0
         self._is_hovered: bool = False
 
+        # Dots overlay — proper QWidget subclass so paintEvent is called correctly
+        self._dots = _DotsWidget(handle)
+        self._dots.show()
+
         self._fade_timer = QTimer(self)
         self._fade_timer.setInterval(self._INTERVAL_MS)
         self._fade_timer.timeout.connect(self._step)
@@ -246,8 +288,9 @@ class _SplitterHandleAnimator(QObject):
         self._poll_timer.timeout.connect(self._poll_hover)
         self._poll_timer.start()
 
-        # Stop timers as soon as the underlying C++ widget is destroyed.
         handle.destroyed.connect(self._on_handle_destroyed)
+        # Event filter only used to track handle resize → keep dots sized correctly
+        handle.installEventFilter(self)
 
     def _on_handle_destroyed(self) -> None:
         self._alive = False
@@ -255,7 +298,6 @@ class _SplitterHandleAnimator(QObject):
         self._fade_timer.stop()
 
     def _poll_hover(self) -> None:
-        """Check whether the cursor is over the handle and trigger fade."""
         if not self._alive:
             return
         try:
@@ -265,7 +307,6 @@ class _SplitterHandleAnimator(QObject):
             top_left = self._handle.mapToGlobal(QPoint(0, 0))
             handle_rect = QRect(top_left, self._handle.size())
         except RuntimeError:
-            # C++ object deleted without the destroyed signal firing (edge case).
             self._on_handle_destroyed()
             return
         is_over = handle_rect.contains(cursor_pos)
@@ -297,16 +338,27 @@ class _SplitterHandleAnimator(QObject):
             self._apply_style()
             self._fade_timer.stop()
 
+    def eventFilter(self, obj: QObject, event) -> bool:  # type: ignore[override]
+        if obj is self._handle and self._alive:
+            if event.type() == QEvent.Type.Resize:
+                try:
+                    self._dots.resize(self._handle.size())
+                    self._dots.raise_()
+                except RuntimeError:
+                    self._on_handle_destroyed()
+        return False
+
     def _apply_style(self) -> None:
         if not self._alive:
             return
         try:
             a = int(self._alpha)
-            if a <= 0:
-                self._handle.setStyleSheet("QSplitterHandle { background: transparent; }")
-            else:
+            if a > 0:
                 self._handle.setStyleSheet(
-                    f"QSplitterHandle {{ background: rgba({self._R},{self._G},{self._B},{a}); }}"
+                    f"background-color: rgba({self._R},{self._G},{self._B},{a});"
                 )
+            else:
+                self._handle.setStyleSheet("")
+            self._dots.raise_()
         except RuntimeError:
             self._on_handle_destroyed()

@@ -192,7 +192,7 @@ class Ui_MainWindow(object):
         self.catTemplateSplitter = QSplitter(self.templatesDetailsSplitter)
         self.catTemplateSplitter.setObjectName(u"catTemplateSplitter")
         self.catTemplateSplitter.setOrientation(Qt.Orientation.Horizontal)
-        self.catTemplateSplitter.setHandleWidth(4)
+        self.catTemplateSplitter.setHandleWidth(10)
         self.categoriesListWidget = QListWidget(self.catTemplateSplitter)
         self.categoriesListWidget.setObjectName(u"categoriesListWidget")
         self.categoriesListWidget.setMinimumSize(QSize(90, 0))
