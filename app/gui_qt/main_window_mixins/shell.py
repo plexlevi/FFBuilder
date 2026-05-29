@@ -108,57 +108,69 @@ class ShellMixin:
         dmg_url = str(payload.get("dmg_asset_url", "")).strip()
         dmg_name = str(payload.get("dmg_asset_name", "")).strip()
 
-        msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Icon.Information)
-        msg.setWindowTitle("Frissítés elérhető")
-        msg.setTextFormat(Qt.TextFormat.RichText)
-        msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-        msg.setOpenExternalLinks(True)
-        text = (
-            f"<b>Új verzió érhető el: v{latest_version}</b><br>"
-            f"Jelenlegi verzió: v{APP_VERSION}<br><br>"
-            f"<a href=\"{html_url}\">Megnyitás GitHubon</a><br><br>"
-            "Mit szeretnél tenni?"
-        )
-        msg.setText(text)
+        _log.debug("[UpdateCheck] Scheduling update dialog (latest=%s dmg_url=%s)", latest_version, dmg_url or "<none>")
+        QTimer.singleShot(0, lambda: self._show_update_dialog(latest_version, html_url, dmg_url, dmg_name))
 
-        install_btn = None
-        if dmg_url and sys.platform == "darwin":
-            install_btn = msg.addButton("Automatikus telepítés", QMessageBox.ButtonRole.AcceptRole)
-            _ah, _ar, _ag, _ab = get_accent()
-            _accent = QColor(_ah)
-            _darker = _accent.darker(120)
-            _lighter = _accent.lighter(115)
-            install_btn.setStyleSheet(
-                "QPushButton {"
-                f" background-color: {_accent.name()};"
-                " color: #ffffff;"
-                f" border: 1px solid {_darker.name()};"
-                " border-radius: 6px;"
-                " font-weight: 600;"
-                " padding: 6px 12px;"
-                "}"
-                f"QPushButton:hover {{ background-color: {_lighter.name()}; }}"
-                f"QPushButton:pressed {{ background-color: {_darker.name()}; }}"
+    def _show_update_dialog(self, latest_version: str, html_url: str, dmg_url: str, dmg_name: str) -> None:
+        try:
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Icon.Information)
+            msg.setWindowTitle("Frissítés elérhető")
+            msg.setTextFormat(Qt.TextFormat.RichText)
+            msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+            msg.setOpenExternalLinks(True)
+            text = (
+                f"<b>Új verzió érhető el: v{latest_version}</b><br>"
+                f"Jelenlegi verzió: v{APP_VERSION}<br><br>"
+                f"<a href=\"{html_url}\">Megnyitás GitHubon</a><br><br>"
+                "Mit szeretnél tenni?"
             )
-        later_btn = msg.addButton("Később", QMessageBox.ButtonRole.RejectRole)
-        skip_btn = msg.addButton("Verzió kihagyása", QMessageBox.ButtonRole.DestructiveRole)
-        msg.setDefaultButton(install_btn or later_btn)
-        self.raise_()
-        self.activateWindow()
-        msg.exec()
+            msg.setText(text)
 
-        clicked = msg.clickedButton()
-        if install_btn is not None and clicked is install_btn:
-            settings_manager.save_settings({"skip_update_version": ""})
-            self._start_update_install(dmg_url, dmg_name)
-            return
-        if clicked is skip_btn:
-            settings_manager.save_settings({"skip_update_version": latest_version})
-            self._set_status(f"ℹ️ v{latest_version} frissítés elrejtve", 3500)
-            return
-        if clicked is later_btn:
-            self._set_status(f"ℹ️ Új verzió: v{latest_version}", 3500)
+            install_btn = None
+            if dmg_url and sys.platform == "darwin":
+                install_btn = msg.addButton("Automatikus telepítés", QMessageBox.ButtonRole.AcceptRole)
+                try:
+                    _ah, _ar, _ag, _ab = get_accent()
+                    _accent = QColor(_ah)
+                    _darker = _accent.darker(120)
+                    _lighter = _accent.lighter(115)
+                    install_btn.setStyleSheet(
+                        "QPushButton {"
+                        f" background-color: {_accent.name()};"
+                        " color: #ffffff;"
+                        f" border: 1px solid {_darker.name()};"
+                        " border-radius: 6px;"
+                        " font-weight: 600;"
+                        " padding: 6px 12px;"
+                        "}"
+                        f"QPushButton:hover {{ background-color: {_lighter.name()}; }}"
+                        f"QPushButton:pressed {{ background-color: {_darker.name()}; }}"
+                    )
+                except Exception:
+                    _log.exception("[UpdateCheck] Failed to style install button")
+
+            later_btn = msg.addButton("Később", QMessageBox.ButtonRole.RejectRole)
+            skip_btn = msg.addButton("Verzió kihagyása", QMessageBox.ButtonRole.DestructiveRole)
+            msg.setDefaultButton(install_btn or later_btn)
+            self.raise_()
+            self.activateWindow()
+            _log.debug("[UpdateCheck] Showing update dialog")
+            msg.exec()
+
+            clicked = msg.clickedButton()
+            if install_btn is not None and clicked is install_btn:
+                settings_manager.save_settings({"skip_update_version": ""})
+                self._start_update_install(dmg_url, dmg_name)
+                return
+            if clicked is skip_btn:
+                settings_manager.save_settings({"skip_update_version": latest_version})
+                self._set_status(f"ℹ️ v{latest_version} frissítés elrejtve", 3500)
+                return
+            if clicked is later_btn:
+                self._set_status(f"ℹ️ Új verzió: v{latest_version}", 3500)
+        except Exception:
+            _log.exception("[UpdateCheck] Exception in _show_update_dialog")
 
     def _start_update_install(self, dmg_url: str, dmg_name: str) -> None:
         if self._update_install_in_progress:
