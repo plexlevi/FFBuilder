@@ -288,5 +288,16 @@
   "❌ Error code: {var}": "❌ Hibakód: {var}",
   "❌ Error in queue: {var}": "❌ Hiba a sorban: {var}",
   "⬤  INPUT": "⬤  INPUT",
-  "📖  Open FFmpeg Wiki": "📖  FFmpeg Wiki megnyitása"
+  "📖  Open FFmpeg Wiki": "📖  FFmpeg Wiki megnyitása",
+  "Clear all": "Összes törlése",
+  "Clear log": "Napló törlése",
+  "Delete all log entries?": "Töröl minden naplóbejegyzést?",
+  "Log": "Napló",
+  "No conversions logged": "Nincs naplózott konverzió",
+  "Open log file": "Logfájl megnyitása",
+  "Success": "Sikeres",
+  "{var} entries logged": "{var} bejegyzés naplózva",
+  "Show FFmpeg console output": "FFmpeg konzolkimenet megjelenítése",
+  "FFmpeg output": "FFmpeg kimenet",
+  "No FFmpeg output recorded.": "Nincs rögzített FFmpeg kimenet."
 }

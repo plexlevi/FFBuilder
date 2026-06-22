@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractScrollArea,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.gui_qt.main_window_parts import _CategoryDropFilter, _install_splitter_dots
+from app.shared import settings as settings_manager
 
 
 class _ComboBoxWheelGuard(QObject):
@@ -147,3 +149,14 @@ class UiWiringMixin:
 
         self.loudness_progress_bar.setVisible(False)
         self.run_progress.setVisible(False)
+
+        self.ffmpeg_console = self._w(QPlainTextEdit, "ffmpegConsoleTextEdit")
+        _console_font = QFont()
+        _console_font.setFamilies(["Menlo", "Monaco", "Courier New", "monospace"])
+        _console_font.setPointSize(10)
+        self.ffmpeg_console.setFont(_console_font)
+        self.ffmpeg_console.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        _lh = self.ffmpeg_console.fontMetrics().lineSpacing()
+        self.ffmpeg_console.setFixedHeight(_lh * 3 + 12)
+        _show = bool(settings_manager.get_settings().get("show_ffmpeg_console", False))
+        self.ffmpeg_console.setVisible(_show)

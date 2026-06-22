@@ -772,13 +772,13 @@
       <widget class="QProgressBar" name="statusRunProgressBar">
        <property name="minimumSize">
         <size>
-         <width>200</width>
+         <width>0</width>
          <height>14</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>400</width>
+         <width>16777215</width>
          <height>14</height>
         </size>
        </property>

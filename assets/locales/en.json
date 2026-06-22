@@ -283,5 +283,16 @@
   "✗ Failed to open Terminal: {var}": "✗ Failed to open Terminal: {var}",
   "❌ Error code: {var}": "❌ Error code: {var}",
   "❌ Error in queue: {var}": "❌ Error in queue: {var}",
-  "📖  Open FFmpeg Wiki": "📖  Open FFmpeg Wiki"
+  "📖  Open FFmpeg Wiki": "📖  Open FFmpeg Wiki",
+  "Clear all": "Clear all",
+  "Clear log": "Clear log",
+  "Delete all log entries?": "Delete all log entries?",
+  "Log": "Log",
+  "No conversions logged": "No conversions logged",
+  "Open log file": "Open log file",
+  "Success": "Success",
+  "{var} entries logged": "{var} entries logged",
+  "Show FFmpeg console output": "Show FFmpeg console output",
+  "FFmpeg output": "FFmpeg output",
+  "No FFmpeg output recorded.": "No FFmpeg output recorded."
 }

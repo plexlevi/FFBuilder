@@ -24,6 +24,7 @@ from app.domain import cmd_macros
 from app.services.ffmpeg.manager import find_binaries
 from app.gui_qt.main_window_mixins import (
     FileMetadataMixin,
+    LogTabMixin,
     QueueFlowMixin,
     RunFlowMixin,
     ShellMixin,
@@ -54,6 +55,7 @@ def _quote_if_needed(value: str) -> str:
 class MainWindow(
     UiWiringMixin,
     FileMetadataMixin,
+    LogTabMixin,
     QueueFlowMixin,
     RunFlowMixin,
     ShellMixin,
@@ -87,7 +89,10 @@ class MainWindow(
         self._applying_template_move = False
         self._user_stopped = False
         self._run_duration_seconds = 0.0
+        self._run_active_filename: str = ""
         self._stderr_buffer = ""
+        self._stdout_buffer = ""
+        self._ffmpeg_full_log = ""
         self._eta_estimator = _EtaEstimator()
         self._thread_pool = QThreadPool.globalInstance()
         self._hardware_status_worker: _HardwareStatusWorker | None = None
@@ -113,6 +118,7 @@ class MainWindow(
 
         self._wire_widgets()
         self._build_queue_panel()
+        self._build_log_panel()
         self._load_queue_state()
         self._apply_theme_palette()
         self._apply_platform_icons()

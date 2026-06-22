@@ -347,6 +347,39 @@ class Ui_MainWindow(object):
 
         self.builderTabWidget.addTab(self.queueTab, "")
 
+        self.logTab = QWidget()
+        self.logTab.setObjectName(u"logTab")
+        self.logLayout = QVBoxLayout(self.logTab)
+        self.logLayout.setObjectName(u"logLayout")
+        self.logStatusLabel = QLabel(self.logTab)
+        self.logStatusLabel.setObjectName(u"logStatusLabel")
+        self.logLayout.addWidget(self.logStatusLabel)
+
+        self.logButtonLayout = QHBoxLayout()
+        self.logButtonLayout.setObjectName(u"logButtonLayout")
+        self.logDeleteButton = QPushButton(self.logTab)
+        self.logDeleteButton.setObjectName(u"logDeleteButton")
+        self.logButtonLayout.addWidget(self.logDeleteButton)
+        self.logButtonSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.logButtonLayout.addItem(self.logButtonSpacer)
+        self.logOpenButton = QPushButton(self.logTab)
+        self.logOpenButton.setObjectName(u"logOpenButton")
+        self.logButtonLayout.addWidget(self.logOpenButton)
+        self.logClearButton = QPushButton(self.logTab)
+        self.logClearButton.setObjectName(u"logClearButton")
+        self.logButtonLayout.addWidget(self.logClearButton)
+        self.logLayout.addLayout(self.logButtonLayout)
+
+        self.logTreeWidget = QTreeWidget(self.logTab)
+        self.logTreeWidget.setObjectName(u"logTreeWidget")
+        self.logTreeWidget.setColumnCount(4)
+        self.logTreeWidget.setRootIsDecorated(False)
+        self.logTreeWidget.setAlternatingRowColors(True)
+        self.logTreeWidget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.logLayout.addWidget(self.logTreeWidget)
+
+        self.builderTabWidget.addTab(self.logTab, "")
+
         self.verticalLayout.addWidget(self.builderTabWidget)
 
         self.mainHSplitter.addWidget(self.rightPaneWidget)
@@ -404,6 +437,13 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_2.addWidget(self.mainVSplitter)
 
+        self.ffmpegConsoleTextEdit = QPlainTextEdit(self.centralwidget)
+        self.ffmpegConsoleTextEdit.setObjectName(u"ffmpegConsoleTextEdit")
+        self.ffmpegConsoleTextEdit.setReadOnly(True)
+        self.ffmpegConsoleTextEdit.setMaximumBlockCount(500)
+        self.ffmpegConsoleTextEdit.setVisible(False)
+        self.verticalLayout_2.addWidget(self.ffmpegConsoleTextEdit)
+
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")
@@ -422,8 +462,8 @@ class Ui_MainWindow(object):
 
         self.statusRunProgressBar = QProgressBar(self.statusBarContentWidget)
         self.statusRunProgressBar.setObjectName(u"statusRunProgressBar")
-        self.statusRunProgressBar.setMinimumSize(QSize(200, 14))
-        self.statusRunProgressBar.setMaximumSize(QSize(400, 14))
+        self.statusRunProgressBar.setMinimumSize(QSize(0, 14))
+        self.statusRunProgressBar.setMaximumHeight(14)
         self.statusRunProgressBar.setValue(0)
 
         self.statusBarContentLayout.addWidget(self.statusRunProgressBar)
@@ -490,6 +530,16 @@ class Ui_MainWindow(object):
         self.queueStartButton.setText(QCoreApplication.translate("MainWindow", u"Start", None))
         self.queueStopButton.setText(QCoreApplication.translate("MainWindow", u"Stop", None))
         self.builderTabWidget.setTabText(self.builderTabWidget.indexOf(self.queueTab), QCoreApplication.translate("MainWindow", u"Queue", None))
+        self.logStatusLabel.setText(QCoreApplication.translate("MainWindow", u"No conversions logged", None))
+        self.logDeleteButton.setText(QCoreApplication.translate("MainWindow", u"Delete selected", None))
+        self.logOpenButton.setText(QCoreApplication.translate("MainWindow", u"Open log file", None))
+        self.logClearButton.setText(QCoreApplication.translate("MainWindow", u"Clear all", None))
+        ___qtreewidgetitem_log = self.logTreeWidget.headerItem()
+        ___qtreewidgetitem_log.setText(3, QCoreApplication.translate("MainWindow", u"Status", None))
+        ___qtreewidgetitem_log.setText(2, QCoreApplication.translate("MainWindow", u"Output", None))
+        ___qtreewidgetitem_log.setText(1, QCoreApplication.translate("MainWindow", u"File", None))
+        ___qtreewidgetitem_log.setText(0, QCoreApplication.translate("MainWindow", u"Time", None))
+        self.builderTabWidget.setTabText(self.builderTabWidget.indexOf(self.logTab), QCoreApplication.translate("MainWindow", u"Log", None))
         self.previewTitleLabel.setText(QCoreApplication.translate("MainWindow", u"Command preview (editable)", None))
         self.commandPreviewTextEdit.setPlainText(QCoreApplication.translate("MainWindow", u"ffmpeg -i input.mp4 -c:v libx264 -preset fast -crf 28 output.mp4", None))
         self.copyCommandButton.setText(QCoreApplication.translate("MainWindow", u"Copy", None))

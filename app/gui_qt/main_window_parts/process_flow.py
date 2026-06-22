@@ -157,11 +157,13 @@ def ask_ebu_conflict(parent: QWidget, pending_count: int) -> str:
 
 def clear_status_display(progress_bar: QProgressBar) -> None:
     progress_bar.setFormat("")
+    progress_bar.setMinimumWidth(0)
     progress_bar.setVisible(False)
 
 
 def set_status_display(progress_bar: QProgressBar, clear_timer: QTimer, text: str, timeout_ms: int = 0) -> None:
     progress_bar.setFormat(text)
+    progress_bar.setMinimumWidth(progress_bar.fontMetrics().horizontalAdvance(text) + 24)
     progress_bar.setVisible(True)
     clear_timer.stop()
     if timeout_ms > 0:

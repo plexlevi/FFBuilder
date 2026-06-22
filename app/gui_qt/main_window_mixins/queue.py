@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFileDialog,
+    QHeaderView,
     QLabel,
     QMenu,
     QMessageBox,
@@ -53,6 +54,12 @@ class QueueFlowMixin:
         self._queue_stop_button.clicked.connect(self._stop_queue)
 
         self._queue_tree_widget = self._w(QTreeWidget, "queueTreeWidget")
+        _qh = self._queue_tree_widget.header()
+        _qh.setStretchLastSection(False)
+        _qh.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        _qh.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        _qh.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        _qh.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self._queue_tree_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self._queue_tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self._queue_tree_widget.customContextMenuRequested.connect(self._show_queue_context_menu)
@@ -191,10 +198,14 @@ class QueueFlowMixin:
         if self._queue_tree_widget is None:
             return
 
-        selected_id = None
+        selected_ids = {
+            item.data(0, Qt.ItemDataRole.UserRole)
+            for item in self._queue_tree_widget.selectedItems()
+        }
+        current_id = None
         current = self._queue_tree_widget.currentItem()
         if current is not None:
-            selected_id = current.data(0, Qt.ItemDataRole.UserRole)
+            current_id = current.data(0, Qt.ItemDataRole.UserRole)
 
         self._queue_tree_widget.clear()
         for queue_item in self._queue_items:
@@ -207,12 +218,16 @@ class QueueFlowMixin:
             row.setData(0, Qt.ItemDataRole.UserRole, queue_item.queue_id)
             self._queue_tree_widget.addTopLevelItem(row)
 
-        if selected_id is not None:
-            for idx in range(self._queue_tree_widget.topLevelItemCount()):
-                item = self._queue_tree_widget.topLevelItem(idx)
-                if item.data(0, Qt.ItemDataRole.UserRole) == selected_id:
-                    self._queue_tree_widget.setCurrentItem(item)
-                    break
+        first_selected: QTreeWidgetItem | None = None
+        for idx in range(self._queue_tree_widget.topLevelItemCount()):
+            item = self._queue_tree_widget.topLevelItem(idx)
+            item_id = item.data(0, Qt.ItemDataRole.UserRole)
+            if item_id in selected_ids:
+                item.setSelected(True)
+                if first_selected is None:
+                    first_selected = item
+            if item_id == current_id:
+                self._queue_tree_widget.setCurrentItem(item)
 
         self._refresh_queue_controls()
 
@@ -477,7 +492,10 @@ class QueueFlowMixin:
         queue_item.progress = 0.0
         self._run_duration_seconds = max(0.0, float(queue_item.duration_seconds))
         self._stderr_buffer = ""
+        self._ffmpeg_full_log = f"$ {queue_item.command}\n\n"
+        self._run_active_filename = queue_item.label
         self._eta_estimator.reset()
+        self._clear_ffmpeg_console()
         init_run_progress_display(self.run_progress, self._run_duration_seconds)
 
         self._set_status(f"⏳ Sor fut: {queue_item.label}")

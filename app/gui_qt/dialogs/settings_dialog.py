@@ -65,6 +65,7 @@ class SettingsDialog(QDialog):
         self.auto_apply_preset_check = w.findChild(QCheckBox, "autoApplyPresetCheck")
         self.save_panes_check = w.findChild(QCheckBox, "savePanesCheck")
         self.auto_ebu_check = w.findChild(QCheckBox, "autoEbuCheck")
+        self.show_console_check = w.findChild(QCheckBox, "showConsoleCheck")
         self.auto_update_check = w.findChild(QCheckBox, "autoUpdateCheck")
         self.check_updates_button = w.findChild(QPushButton, "checkUpdatesButton")
         self.reset_layout_button = w.findChild(QPushButton, "resetLayoutButton")
@@ -87,6 +88,7 @@ class SettingsDialog(QDialog):
         self.save_panes_check.toggled.connect(self._on_settings_changed)
         self.auto_apply_preset_check.toggled.connect(self._on_settings_changed)
         self.auto_ebu_check.toggled.connect(self._on_settings_changed)
+        self.show_console_check.toggled.connect(self._on_settings_changed)
         self.auto_update_check.toggled.connect(self._on_settings_changed)
 
     def _load_values(self) -> None:
@@ -105,6 +107,7 @@ class SettingsDialog(QDialog):
         self.save_panes_check.setChecked(bool(self._settings.get("save_pane_sizes", False)))
         self.auto_apply_preset_check.setChecked(bool(self._settings.get("auto_apply_last_preset", True)))
         self.auto_ebu_check.setChecked(bool(self._settings.get("auto_ebu_analysis", True)))
+        self.show_console_check.setChecked(bool(self._settings.get("show_ffmpeg_console", False)))
         self.auto_update_check.setChecked(bool(self._settings.get("auto_check_updates", True)))
         current_lang = get_language()
         for i in range(self.language_combo.count()):
@@ -170,6 +173,7 @@ class SettingsDialog(QDialog):
                 "save_pane_sizes": self.save_panes_check.isChecked(),
                 "auto_apply_last_preset": self.auto_apply_preset_check.isChecked(),
                 "auto_ebu_analysis": self.auto_ebu_check.isChecked(),
+                "show_ffmpeg_console": self.show_console_check.isChecked(),
                 "auto_check_updates": self.auto_update_check.isChecked(),
             }
         )

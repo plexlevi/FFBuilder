@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import QProcess, Qt, QTimer
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QTextCursor
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QVBoxLayout
 
 from app.domain import cmd_macros
@@ -203,6 +205,7 @@ class RunFlowMixin:
         self._refresh_output_path_from_input()
         self._refresh_command()
         self._refresh_queue_controls()
+        self._apply_console_visibility()
         if self.current_file_info:
             self._render_metadata(self.current_file_info)
 
@@ -265,10 +268,16 @@ class RunFlowMixin:
         self._run_duration_seconds = float(self.current_file_info.get("__duration_seconds", 0.0) or 0.0)
         self._stderr_buffer = ""
         self._stdout_buffer = ""
+        self._ffmpeg_full_log = f"$ {command}\n\n"
         self._eta_estimator.reset()
+        self._clear_ffmpeg_console()
         init_run_progress_display(self.run_progress, self._run_duration_seconds)
 
-        self._set_status(trs("⏳ Running..."))
+        self._run_active_filename = Path(str(self.current_file_info.get("path", "") or "")).name
+        status = trs("⏳ Running...")
+        if self._run_active_filename:
+            status = f"{status} ({self._run_active_filename})"
+        self._set_status(status)
         self.run_command_button.setText(trs("■ Stop"))
         self._user_stopped = False
         self._start_command(command)
@@ -285,7 +294,8 @@ class RunFlowMixin:
             return
         data = bytes(self._process.readAllStandardError()).decode("utf-8", errors="replace")
         self._stderr_buffer = append_capped_text(self._stderr_buffer, data, 12000)
-
+        self._ffmpeg_full_log += data
+        self._append_ffmpeg_console(data)
         self._apply_process_progress_update(self._stderr_buffer)
 
     def _on_process_stdout(self) -> None:
@@ -307,7 +317,10 @@ class RunFlowMixin:
             self.run_progress.setProperty("value", 0)
 
         if progress_update.get("status_text"):
-            self._set_status(str(progress_update["status_text"]))
+            status = str(progress_update["status_text"])
+            if self._run_active_filename:
+                status = f"{status} ({self._run_active_filename})"
+            self._set_status(status)
 
         pct = progress_update.get("progress_percent")
         if pct is None:
@@ -322,10 +335,13 @@ class RunFlowMixin:
     def _on_process_finished(self, exit_code: int, _status) -> None:
         queue_item = self._queue_active_item
         self._queue_active_item = None
+        self._run_active_filename = ""
         self.run_command_button.setText(trs("Run"))
 
         if queue_item is not None:
             queue_result = apply_queue_item_finish_state(queue_item, exit_code, self._user_stopped)
+            _q_status = "success" if exit_code == 0 else ("stopped" if self._user_stopped else "error")
+            self.append_conversion_log(queue_item.input_path, queue_item.output_path, _q_status, exit_code, self._ffmpeg_full_log)
             self._set_status(queue_result["status_text"], int(queue_result["timeout_ms"]))
             if queue_result.get("play_sound"):
                 self._play_notification_sound(str(queue_result["play_sound"]))
@@ -338,6 +354,11 @@ class RunFlowMixin:
             else:
                 self._refresh_queue_controls()
             return
+
+        _r_status = "success" if exit_code == 0 else ("stopped" if self._user_stopped else "error")
+        _r_input = str(self.current_file_info.get("path", "") or "")
+        _r_output = self.output_path_line.text().strip()
+        self.append_conversion_log(_r_input, _r_output, _r_status, exit_code, self._ffmpeg_full_log)
 
         finish_result = resolve_process_finish_state(
             exit_code,
@@ -356,3 +377,24 @@ class RunFlowMixin:
             self._start_next_queue_item,
         ):
             return
+
+    # ------------------------------------------------------------------ console
+
+    def _append_ffmpeg_console(self, text: str) -> None:
+        """Append raw FFmpeg output to the console widget (no-op when hidden)."""
+        if not hasattr(self, "ffmpeg_console") or not self.ffmpeg_console.isVisible():
+            return
+        cursor = self.ffmpeg_console.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.ffmpeg_console.setTextCursor(cursor)
+        self.ffmpeg_console.insertPlainText(text)
+        self.ffmpeg_console.ensureCursorVisible()
+
+    def _clear_ffmpeg_console(self) -> None:
+        if hasattr(self, "ffmpeg_console"):
+            self.ffmpeg_console.clear()
+
+    def _apply_console_visibility(self) -> None:
+        if hasattr(self, "ffmpeg_console"):
+            show = bool(settings_manager.get_settings().get("show_ffmpeg_console", False))
+            self.ffmpeg_console.setVisible(show)

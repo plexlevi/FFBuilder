@@ -37,7 +37,8 @@ _DEFAULTS: dict = {
     "auto_check_updates": True,
     "skip_update_version": "",
     "conversion_queue_items": [],
-    "auto_ebu_analysis": False
+    "auto_ebu_analysis": False,
+    "show_ffmpeg_console": False
 }
 
 def _ensure_settings_file() -> None:

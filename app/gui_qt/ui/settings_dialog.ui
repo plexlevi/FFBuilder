@@ -217,6 +217,13 @@ QCheckBox { color: #e0e0e0; }</string>
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QCheckBox" name="showConsoleCheck">
+        <property name="text">
+         <string>Show FFmpeg console output</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
