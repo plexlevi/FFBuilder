@@ -228,6 +228,7 @@ class QueueFlowMixin:
 
         current_row = self.files_list_widget.currentRow()
         self._refresh_command()
+        active_template = resolve_template_by_index(self._template_manager.templates, self._current_template_idx)
 
         added_items: list[_ConversionQueueItem] = []
         failed: list[str] = []
@@ -238,27 +239,22 @@ class QueueFlowMixin:
             file_info = self.files[row]
             input_path = str(file_info.get("path", "") or "")
 
-            if row == current_row:
+            if row == current_row and self.builder_tabs.currentIndex() == 0:
                 command = self.command_preview.toPlainText().strip()
                 output_path = self.output_path_line.text().strip()
-            elif self.builder_tabs.currentIndex() == 0:
-                tmpl = resolve_template_by_index(self._template_manager.templates, self._current_template_idx)
-                if tmpl is not None:
-                    t_suffix = template_output_suffix(tmpl)
-                    output_path = self._compute_output_path(input_path, t_suffix)
-                    command = expand_template_command(
-                        tmpl,
-                        input_path=input_path,
-                        output_path=output_path,
-                        fallback_fmt=normalized_output_format(self.output_format_combo.currentText(), "mp4"),
-                        ffprobe_bin=self._ffprobe_bin or "",
-                    )
-                else:
-                    command = ""
-                    output_path = ""
+            elif active_template is not None:
+                t_suffix = template_output_suffix(active_template)
+                output_path = self._compute_output_path(input_path, t_suffix)
+                command = expand_template_command(
+                    active_template,
+                    input_path=input_path,
+                    output_path=output_path,
+                    fallback_fmt=normalized_output_format(self.output_format_combo.currentText(), "mp4"),
+                    ffprobe_bin=self._ffprobe_bin or "",
+                )
             else:
-                command = ""
-                output_path = ""
+                command = self.command_preview.toPlainText().strip() if row == current_row else ""
+                output_path = self.output_path_line.text().strip() if row == current_row else ""
 
             if not command:
                 failed.append(Path(input_path).name if input_path else f"#{row + 1}")
@@ -266,9 +262,8 @@ class QueueFlowMixin:
 
             if not output_path and input_path:
                 suffix = ""
-                tmpl = resolve_template_by_index(self._template_manager.templates, self._current_template_idx)
-                if tmpl is not None:
-                    suffix = template_output_suffix(tmpl)
+                if active_template is not None:
+                    suffix = template_output_suffix(active_template)
                 output_path = self._compute_output_path(input_path, suffix)
 
             validation_error = validate_queue_snapshot(command, input_path, output_path)

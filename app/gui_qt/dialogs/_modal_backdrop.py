@@ -162,8 +162,9 @@ class ModalBackdrop(QWidget):
         p = QPainter(self)
         p.fillRect(self.rect(), QColor(0, 0, 0, self._alpha))
 
-    def mousePressEvent(self, _event) -> None:
-        self.dismissed.emit()
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.dismissed.emit()
 
     def eventFilter(self, watched, event) -> bool:
         if event.type() == QEvent.Type.Resize and watched is self.parent():

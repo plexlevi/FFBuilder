@@ -102,6 +102,7 @@ class RunFlowMixin:
         )
         if path:
             set_line_edit_text_at_start(self.output_path_line, path)
+            self._refresh_command()
 
     def _open_visual_editor(self) -> None:
         if self._ve_dialog is not None and self._ve_dialog.isVisible():

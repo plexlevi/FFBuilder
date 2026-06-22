@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QFileDialog, QInputDialog, QMenu, QMessageBox
 from app.domain.ffmpeg_params import CONTAINER_FORMATS
 from app.gui_qt.dialogs.template_editor_dialog import TemplateEditorDialog
 from app.shared import settings as settings_manager
+from app.shared.i18n import trs
 
 
 class TemplateCategoryMixin:
@@ -183,16 +184,16 @@ class TemplateCategoryMixin:
         menu = QMenu(self.templates_list)
         selected_rows = sorted({idx.row() for idx in self.templates_list.selectedIndexes()})
 
-        add_action = menu.addAction("Új sablon")
+        add_action = menu.addAction(trs("New template"))
         menu.addSeparator()
 
-        edit_action = menu.addAction("Szerkesztés")
+        edit_action = menu.addAction(trs("Edit"))
         edit_action.setEnabled(len(selected_rows) == 1)
 
-        duplicate_action = menu.addAction("Duplikálás")
+        duplicate_action = menu.addAction(trs("Duplicate"))
         duplicate_action.setEnabled(len(selected_rows) == 1)
 
-        move_menu = menu.addMenu("Áthelyezés mappába...")
+        move_menu = menu.addMenu(trs("Move to folder..."))
         cats = self._template_manager.categories()
         current_cat = self._current_category()
         move_actions: dict = {}
@@ -202,9 +203,9 @@ class TemplateCategoryMixin:
                 move_actions[a] = cat
         move_menu.setEnabled(bool(move_actions) and len(selected_rows) == 1)
 
-        export_action = menu.addAction("Exportálás")
+        export_action = menu.addAction(trs("Export"))
         menu.addSeparator()
-        delete_action = menu.addAction("Törlés")
+        delete_action = menu.addAction(trs("Delete"))
         action = menu.exec(self.templates_list.mapToGlobal(pos))
         if action == edit_action:
             self._edit_template()
@@ -234,8 +235,8 @@ class TemplateCategoryMixin:
             return
 
         _global_idx, current = cat_templates[local_row]
-        base_name = str(current.get("name", "")).strip() or "Új sablon"
-        copy_name = f"{base_name} (másolat)"
+        base_name = str(current.get("name", "")).strip() or trs("New template")
+        copy_name = f"{base_name} ({trs('copy')})"
 
         new_idx = self._template_manager.add(
             copy_name,
@@ -249,7 +250,7 @@ class TemplateCategoryMixin:
         cat_templates = self._template_manager.templates_in_category(cat)
         new_local_row = next((r for r, (gi, _) in enumerate(cat_templates) if gi == new_idx), local_row)
         self._reload_templates(select_cat=cat, select_tmpl_row=new_local_row)
-        self._set_status(f"Sablon duplikálva: {copy_name}", 2500)
+        self._set_status(trs("Template duplicated: {var}").replace("{var}", copy_name, 1), 2500)
 
     def _edit_template(self) -> None:
         selected_rows = sorted({idx.row() for idx in self.templates_list.selectedIndexes()})
@@ -288,10 +289,10 @@ class TemplateCategoryMixin:
             return
         names = [self._template_manager.templates[gi].get("name", "") for gi in global_indices]
         if len(names) == 1:
-            prompt = f"Biztosan törlöd ezt a sablont?\n\n{names[0]}"
+            prompt = trs("Are you sure you want to delete this template?\n\n{var}").replace("{var}", names[0], 1)
         else:
-            prompt = f"Biztosan törlöd a kijelölt {len(names)} sablont?"
-        ok = QMessageBox.question(self, "Törlés", prompt)
+            prompt = trs("Are you sure you want to delete {var} selected templates?").replace("{var}", str(len(names)), 1)
+        ok = QMessageBox.question(self, trs("Delete"), prompt)
         if ok != QMessageBox.Yes:
             return
         self._template_manager.delete(global_indices)
@@ -312,7 +313,7 @@ class TemplateCategoryMixin:
         if not global_indices:
             return
         initial = self._template_manager.suggested_export_name(global_indices) + ".xml"
-        path, _ = QFileDialog.getSaveFileName(self, "Sablon export", initial, "XML files (*.xml)")
+        path, _ = QFileDialog.getSaveFileName(self, trs("Template export"), initial, "XML files (*.xml)")
         if not path:
             return
         self._template_manager.export_xml(global_indices, path)
@@ -357,10 +358,10 @@ class TemplateCategoryMixin:
         cats = self._template_manager.categories()
 
         menu = QMenu(self.categories_list)
-        new_action = menu.addAction("Új mappa")
-        rename_action = menu.addAction("Átnevezés")
+        new_action = menu.addAction(trs("New folder"))
+        rename_action = menu.addAction(trs("Rename"))
         rename_action.setEnabled(row >= 0)
-        delete_action = menu.addAction("Törlés")
+        delete_action = menu.addAction(trs("Delete"))
         delete_action.setEnabled(row >= 0)
         action = menu.exec(self.categories_list.mapToGlobal(pos))
 
@@ -372,20 +373,20 @@ class TemplateCategoryMixin:
             self._delete_category(cats[row])
 
     def _new_category(self) -> None:
-        name, ok = QInputDialog.getText(self, "Új mappa", "Mappa neve:")
+        name, ok = QInputDialog.getText(self, trs("New folder"), trs("Folder name:"))
         if not ok or not name.strip():
             return
         if not self._template_manager.add_category(name.strip()):
-            QMessageBox.warning(self, "Hiba", "Ez a mappa már létezik.")
+            QMessageBox.warning(self, trs("Error"), trs("This folder already exists."))
             return
         self._reload_templates(select_cat=name.strip())
 
     def _rename_category(self, old_name: str) -> None:
-        new_name, ok = QInputDialog.getText(self, "Átnevezés", "Új név:", text=old_name)
+        new_name, ok = QInputDialog.getText(self, trs("Rename"), trs("New name:"), text=old_name)
         if not ok or not new_name.strip() or new_name.strip() == old_name:
             return
         if not self._template_manager.rename_category(old_name, new_name.strip()):
-            QMessageBox.warning(self, "Hiba", "Átnevezés sikertelen (esetleg már létezik ilyen nevű mappa).")
+            QMessageBox.warning(self, trs("Error"), trs("Átnevezés sikertelen (esetleg már létezik ilyen nevű folder)."))
             return
         self._reload_templates(select_cat=new_name.strip())
 
@@ -393,15 +394,21 @@ class TemplateCategoryMixin:
         cat_templates = self._template_manager.templates_in_category(name)
         if cat_templates:
             QMessageBox.warning(
-                self, "Nem üres mappa",
-                f'A „{name}” mappa {len(cat_templates)} sablont tartalmaz.\n'
-                "Előbb helyezd át vagy töröld a sablonokat.",
+                self,
+                trs("Non-empty folder"),
+                trs("A '{var}' folder contains {var} templates.\nElőbb helyezd át vagy töröld a sablonokat.")
+                .replace("{var}", name, 1)
+                .replace("{var}", str(len(cat_templates)), 1),
             )
             return
-        reply = QMessageBox.question(self, "Mappa törlése", f'Biztosan törlöd a „{name}” mappát?')
+        reply = QMessageBox.question(
+            self,
+            trs("Mappa törlése"),
+            trs("Are you sure you want to delete \"{var}\" folder?").replace("{var}", name, 1),
+        )
         if reply != QMessageBox.Yes:
             return
         if not self._template_manager.delete_category(name):
-            QMessageBox.warning(self, "Hiba", "Törlés sikertelen.")
+            QMessageBox.warning(self, trs("Error"), trs("Delete failed."))
             return
         self._reload_templates()
