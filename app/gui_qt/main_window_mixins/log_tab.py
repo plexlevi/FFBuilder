@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QColor, QDesktopServices
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
-    QDialogButtonBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -48,12 +48,6 @@ class LogTabMixin:
         self._log_delete_button.setEnabled(False)
         self._log_delete_button.clicked.connect(self._log_delete_selected)
 
-        self._log_open_button: QPushButton = self._w(QPushButton, "logOpenButton")
-        self._log_open_button.clicked.connect(self._log_open_file)
-
-        self._log_clear_button: QPushButton = self._w(QPushButton, "logClearButton")
-        self._log_clear_button.clicked.connect(self._log_clear_all)
-
         self._log_tree: QTreeWidget = self._w(QTreeWidget, "logTreeWidget")
         self._log_tree.setRootIsDecorated(False)
         self._log_tree.setAlternatingRowColors(True)
@@ -64,6 +58,9 @@ class LogTabMixin:
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self._log_tree.itemSelectionChanged.connect(self._on_log_selection_changed)
         self._log_tree.itemDoubleClicked.connect(self._log_show_detail)
+        self._log_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._log_tree.customContextMenuRequested.connect(self._show_log_context_menu)
+        self._log_tree.installEventFilter(self)
 
         self._refresh_log_view()
 
@@ -122,6 +119,31 @@ class LogTabMixin:
             conversion_log.clear_all()
             self._refresh_log_view()
 
+    def _show_log_context_menu(self, pos) -> None:
+        menu = QMenu(self._log_tree)
+        has_entries = self._log_tree.topLevelItemCount() > 0
+        has_selection = bool(self._log_tree.selectedItems())
+
+        delete_action = menu.addAction(trs("Delete selected"))
+        delete_action.setEnabled(has_selection)
+        menu.addSeparator()
+        clear_action = menu.addAction(trs("Clear all"))
+        clear_action.setEnabled(has_entries)
+
+        action = menu.exec(self._log_tree.mapToGlobal(pos))
+        if action == delete_action:
+            self._log_delete_selected()
+        elif action == clear_action:
+            self._log_clear_all()
+
+    def eventFilter(self, obj, event: QEvent) -> bool:
+        if obj is self._log_tree and event.type() == QEvent.Type.KeyPress:
+            key = event.key()  # type: ignore[attr-defined]
+            if key in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+                self._log_delete_selected()
+                return True
+        return super().eventFilter(obj, event)
+
     def _log_show_detail(self, item: QTreeWidgetItem, _col: int) -> None:
         entry: dict = item.data(0, _ENTRY_ROLE) or {}
         console_out = str(entry.get("console_output", "")).strip()
@@ -155,10 +177,6 @@ class LogTabMixin:
         layout.addLayout(btn_row)
 
         dlg.exec()
-
-    def _log_open_file(self) -> None:
-        if conversion_log._LOG_PATH.exists():
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(conversion_log._LOG_PATH)))
 
     def append_conversion_log(
         self, input_path: str, output_path: str, status: str, exit_code: int,

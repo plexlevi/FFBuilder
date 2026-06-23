@@ -45,7 +45,7 @@ class QueueFlowMixin:
     def _build_queue_panel(self) -> None:
         self._queue_status_label = self._w(QLabel, "queueStatusLabel")
         self._queue_clear_button = self._w(QPushButton, "queueClearButton")
-        self._queue_clear_button.clicked.connect(self._clear_queue)
+        self._queue_clear_button.clicked.connect(self._remove_selected_queue_item)
 
         self._queue_start_button = self._w(QPushButton, "queueStartButton")
         self._queue_start_button.clicked.connect(self._start_queue)
@@ -66,6 +66,7 @@ class QueueFlowMixin:
         self._queue_tree_widget.itemSelectionChanged.connect(self._refresh_queue_controls)
         self._queue_tree_widget.itemDoubleClicked.connect(self._edit_queue_item_command)
         self._queue_tree_widget.model().rowsMoved.connect(self._on_queue_rows_moved)
+        self._queue_tree_widget.installEventFilter(self)
 
         self._refresh_queue_view()
         self._refresh_queue_controls()
@@ -192,7 +193,17 @@ class QueueFlowMixin:
             mode = QAbstractItemView.NoDragDrop if active else QAbstractItemView.InternalMove
             self._queue_tree_widget.setDragDropMode(mode)
         if self._queue_clear_button is not None:
-            self._queue_clear_button.setEnabled(bool(self._queue_items) and not active)
+            has_selection = bool(
+                self._queue_tree_widget is not None
+                and self._queue_tree_widget.selectedItems()
+            )
+            active_id = self._queue_active_item.queue_id if self._queue_active_item else None
+            selected_ids = {
+                it.data(0, Qt.ItemDataRole.UserRole)
+                for it in (self._queue_tree_widget.selectedItems() if self._queue_tree_widget else [])
+            }
+            can_delete = has_selection and (active_id not in selected_ids)
+            self._queue_clear_button.setEnabled(can_delete)
 
     def _refresh_queue_view(self) -> None:
         if self._queue_tree_widget is None:
@@ -383,6 +394,9 @@ class QueueFlowMixin:
         menu.addSeparator()
         delete_action = menu.addAction(trs("Delete selected"))
         delete_action.setEnabled(can_delete)
+        menu.addSeparator()
+        clear_all_action = menu.addAction(trs("Clear all"))
+        clear_all_action.setEnabled(bool(self._queue_items) and not active)
 
         action = menu.exec(self._queue_tree_widget.mapToGlobal(pos))
         if action is None:
@@ -398,6 +412,16 @@ class QueueFlowMixin:
                 QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(queue_item.input_path).parent)))
         elif action == delete_action:
             self._remove_selected_queue_item()
+        elif action == clear_all_action:
+            self._clear_queue()
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self._queue_tree_widget and event.type() == event.Type.KeyPress:
+            key = event.key()
+            if key in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+                self._remove_selected_queue_item()
+                return True
+        return super().eventFilter(obj, event)
 
     def _change_queue_output_path(self, tree_items: list) -> None:
         if not tree_items:

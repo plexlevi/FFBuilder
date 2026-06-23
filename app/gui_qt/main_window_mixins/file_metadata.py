@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QEvent, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication, QFileDialog, QMenu, QMessageBox, QTreeWidgetItem
 
@@ -57,6 +57,18 @@ _LOUDNESS_KEYS = {"lufs", "lra", "true_peak", "loudness_gate"}
 
 
 class FileMetadataMixin:
+    def _update_clear_files_button(self) -> None:
+        has_selection = bool(self.files_list_widget.selectedItems())
+        self.clear_files_button.setEnabled(has_selection)
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self.files_list_widget and event.type() == QEvent.Type.KeyPress:
+            if event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+                if self.files_list_widget.selectedItems():
+                    self._delete_selected_file()
+                return True
+        return super().eventFilter(obj, event)
+
     def _on_clear_files(self) -> None:
         self.files.clear()
         self._pending_metadata_paths.clear()
@@ -96,6 +108,9 @@ class FileMetadataMixin:
             audio_action = menu.addAction(trs("Audio analysis"))
             menu.addSeparator()
         delete_action = menu.addAction(trs("Delete selected"))
+        menu.addSeparator()
+        clear_all_action = menu.addAction(trs("Clear all"))
+        clear_all_action.setEnabled(bool(self.files))
         action = menu.exec(self.files_list_widget.mapToGlobal(pos))
         if action == queue_action:
             self._enqueue_current_file()
@@ -110,6 +125,8 @@ class FileMetadataMixin:
             self._open_audio_analysis()
         elif action == delete_action:
             self._delete_selected_file()
+        elif action == clear_all_action:
+            self._on_clear_files()
 
     def _show_metadata_context_menu(self, pos) -> None:
         menu = QMenu(self.metadata_tree)
