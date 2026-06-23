@@ -579,11 +579,6 @@
                     <string>Status</string>
                    </property>
                   </column>
-                  <column>
-                   <property name="text">
-                    <string>Progress</string>
-                   </property>
-                  </column>
                  </widget>
                 </item>
                 <item>

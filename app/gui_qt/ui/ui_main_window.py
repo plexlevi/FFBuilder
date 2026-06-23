@@ -519,7 +519,6 @@ class Ui_MainWindow(object):
         self.queueStatusLabel.setText(QCoreApplication.translate("MainWindow", u"0 items in queue", None))
         self.queueClearButton.setText("")
         ___qtreewidgetitem1 = self.queueTreeWidget.headerItem()
-        ___qtreewidgetitem1.setText(3, QCoreApplication.translate("MainWindow", u"Progress", None));
         ___qtreewidgetitem1.setText(2, QCoreApplication.translate("MainWindow", u"Status", None));
         ___qtreewidgetitem1.setText(1, QCoreApplication.translate("MainWindow", u"Output", None));
         ___qtreewidgetitem1.setText(0, QCoreApplication.translate("MainWindow", u"File", None));

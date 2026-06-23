@@ -14,7 +14,6 @@ from app.gui_qt.dialogs.visual_editor_dialog import VisualEditorWidget
 from app.gui_qt.main_window_parts import (
     apply_finish_result_to_progress_bar,
     apply_queue_item_finish_state,
-    apply_queue_item_progress,
     append_capped_text,
     ask_ebu_conflict,
     compute_output_path_with_suffix,
@@ -327,10 +326,6 @@ class RunFlowMixin:
             return
         self.run_progress.setProperty("maximum", 100)
         self.run_progress.setProperty("value", int(pct))
-
-        if self._queue_active_item is not None:
-            apply_queue_item_progress(self._queue_active_item, float(pct))
-            self._refresh_queue_view()
 
     def _on_process_finished(self, exit_code: int, _status) -> None:
         queue_item = self._queue_active_item

@@ -41,7 +41,6 @@ from .queue_helpers import (
     _ConversionQueueItem,
     apply_invalid_queue_item_state,
     apply_queue_item_finish_state,
-    apply_queue_item_progress,
     get_next_waiting_queue_item,
     queue_has_error_items,
 )
@@ -78,7 +77,6 @@ __all__ = [
     "apply_finish_result_to_progress_bar",
     "apply_invalid_queue_item_state",
     "apply_queue_item_finish_state",
-    "apply_queue_item_progress",
     "append_capped_text",
     "ask_ebu_conflict",
     "build_metadata_rows",

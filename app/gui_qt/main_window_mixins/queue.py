@@ -59,7 +59,6 @@ class QueueFlowMixin:
         _qh.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         _qh.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         _qh.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        _qh.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self._queue_tree_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self._queue_tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self._queue_tree_widget.customContextMenuRequested.connect(self._show_queue_context_menu)
@@ -86,7 +85,6 @@ class QueueFlowMixin:
                     "command": str(item.command),
                     "duration_seconds": float(item.duration_seconds),
                     "status": status,
-                    "progress": float(max(0.0, min(1.0, item.progress))),
                     "exit_code": item.exit_code,
                 }
             )
@@ -127,7 +125,6 @@ class QueueFlowMixin:
                 command=command,
                 duration_seconds=float(entry.get("duration_seconds", 0.0) or 0.0),
                 status=status,
-                progress=float(max(0.0, min(1.0, float(entry.get("progress", 0.0) or 0.0)))),
                 exit_code=entry.get("exit_code"),
             )
             loaded.append(item)
@@ -224,7 +221,6 @@ class QueueFlowMixin:
                 queue_item.label,
                 queue_item.output_path,
                 trs(queue_item.status),
-                f"{int(max(0.0, min(1.0, queue_item.progress)) * 100)}%",
             ])
             row.setData(0, Qt.ItemDataRole.UserRole, queue_item.queue_id)
             self._queue_tree_widget.addTopLevelItem(row)
@@ -513,7 +509,6 @@ class QueueFlowMixin:
 
         self._queue_active_item = queue_item
         queue_item.status = "Running"
-        queue_item.progress = 0.0
         self._run_duration_seconds = max(0.0, float(queue_item.duration_seconds))
         self._stderr_buffer = ""
         self._ffmpeg_full_log = f"$ {queue_item.command}\n\n"
