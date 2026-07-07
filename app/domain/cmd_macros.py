@@ -355,11 +355,11 @@ def _get_compat_streams(input_path: str, ffprobe_bin: str) -> list[dict]:
 def expand_compat_audio(cmd: str, input_path: str, ffprobe_bin: str) -> str:
     """`{compat_audio}` → minden hangsáv Apple/Chromecast-kompatibilis formátumra.
 
-    Surround stream:
-      1. Szteó AAC downmix 256k — Dolby PLII mátrix filter (nincs fázishiba)
-      2. Surround AC3 448k — minden surround sávhoz (DTS is → AC3)
-    Szteó/mono: AAC 256k, -ac:a:N 2 (forrás már szteró, biztonságos)
-    Nincs -map_metadata, nincs -ac 2 a surround downmixnél (helyette dplii filter).
+    Surround stream (>2ch):
+      1. Szteó AAC downmix (_AAC_CODEC, -ac 2, 256k) — iOS default
+      2. Surround AC3 re-encode (ac3, -ac min(ch,6), 448k) — minden surround forráshoz
+    Szteó/mono: _AAC_CODEC, -ac 2, 256k
+    Csak az első sáv kap default dispositiont; nincs copy, dplii, alternate_group.
     """
     def _replace(match: re.Match) -> str:
         if not input_path:
@@ -373,7 +373,6 @@ def expand_compat_audio(cmd: str, input_path: str, ffprobe_bin: str) -> str:
         out_streams: list[dict] = []
         for s in streams:
             in_idx = s["audio_idx"]
-            codec = s["codec"]
             channels = s["channels"]
             lang = s["lang"]
             title = s["title"]
@@ -381,50 +380,29 @@ def expand_compat_audio(cmd: str, input_path: str, ffprobe_bin: str) -> str:
 
             if is_surround:
                 surround_label = _SURROUND_LABELS.get(channels, f"{channels}ch")
-                # Szteó AAC downmix — dplii filter a fázishibák elkerülésére
+                # 1. Szteó AAC downmix
                 out_streams.append({
-                    "in_idx": in_idx, "codec": "aac",
-                    "ac2": False, "dplii": True,
-                    "bitrate": "256k",
+                    "in_idx": in_idx, "codec": _AAC_CODEC,
+                    "ac": 2, "bitrate": "256k",
                     "title": _compat_label(lang, title, "Stereo"),
                     "lang": lang,
                 })
-                # Surround AC3 (copy ha AC3, konvert ha DTS/egyéb)
+                # 2. Surround AC3 — mindig re-encode (copy kerülendő: hibás fejlécet örököl)
                 out_streams.append({
-                    "in_idx": in_idx,
-                    "codec": "copy" if codec in _COMPAT_COPY_CODECS else "ac3",
-                    "ac2": False, "dplii": False,
-                    "bitrate": None if codec in _COMPAT_COPY_CODECS else "448k",
+                    "in_idx": in_idx, "codec": "ac3",
+                    "ac": min(channels, 6), "bitrate": "448k",
                     "title": _compat_label(lang, title, surround_label),
                     "lang": lang,
                 })
             else:
                 out_streams.append({
-                    "in_idx": in_idx, "codec": "aac",
-                    "ac2": True, "dplii": False,
-                    "bitrate": "256k",
+                    "in_idx": in_idx, "codec": _AAC_CODEC,
+                    "ac": 2, "bitrate": "256k",
                     "title": _compat_label(lang, title, "Stereo"),
                     "lang": lang,
                 })
 
-        # 2. pass: alternate group hozzárendelés (language szerint csoportosítás)
-        # Ugyanolyan nyelvű sávok azonos group-ba kerülnek, különböző nyelvek külön csoportba.
-        # Ez kell ahhoz, hogy a QuickTime minden sávot elkülönítetten lásson.
-        lang_to_group: dict[str, int] = {}
-        group_counter = 1
-        for os_ in out_streams:
-            lang = os_["lang"]
-            if lang and lang not in ("und", ""):
-                if lang not in lang_to_group:
-                    lang_to_group[lang] = group_counter
-                    group_counter += 1
-                os_["alt_group"] = lang_to_group[lang]
-            else:
-                # Nyelv nélküli sávok (pl. kommentár): mindütt és külön csoport
-                os_["alt_group"] = group_counter
-                group_counter += 1
-
-        # 3. pass: dup title-ök számozása
+        # 2. pass: dup title-ök számozása
         title_seen: dict[str, int] = {}
         for os_ in out_streams:
             title_seen[os_["title"]] = title_seen.get(os_["title"], 0) + 1
@@ -435,23 +413,17 @@ def expand_compat_audio(cmd: str, input_path: str, ffprobe_bin: str) -> str:
                 title_counter[t] = title_counter.get(t, 0) + 1
                 os_["title"] = f"{t} {title_counter[t]}"
 
-        # 4. pass: ffmpeg chunk-ok generálása
+        # 3. pass: ffmpeg chunk-ok generálása
         chunks: list[str] = []
         for out_idx, os_ in enumerate(out_streams):
             safe_title = os_["title"].replace('"', "'")
             lang = os_["lang"]
+            # Csak az első sáv kap default-ot — több default összezavarja a QuickTime-ot
+            disp = "default" if out_idx == 0 else "0"
             part = f"-map 0:a:{os_['in_idx']} -c:a:{out_idx} {os_['codec']}"
-            if os_["dplii"]:
-                part += f' -filter:a:{out_idx} "aresample=matrix_encoding=dplii"'
-            elif os_["ac2"]:
-                part += f" -ac:a:{out_idx} 2"
-            if os_["bitrate"]:
-                part += f" -b:a:{out_idx} {os_['bitrate']}"
-            # disposition: AAC = default (iOS elsődleges), AC3 = 0 (passthrough alternatíva)
-            disp = "default" if os_["codec"] == "aac" else "0"
+            part += f" -b:a:{out_idx} {os_['bitrate']}"
+            part += f" -ac:a:{out_idx} {os_['ac']}"
             part += f" -disposition:a:{out_idx} {disp}"
-            # alternate_group: QuickTime minden csoportból csak egyet menne, külön group = mind látszó
-            part += f' -metadata:s:a:{out_idx} alternate_group={os_["alt_group"]}'
             part += f' -metadata:s:a:{out_idx} title="{safe_title}"'
             if lang and lang not in ("und", ""):
                 part += f" -metadata:s:a:{out_idx} language={lang}"
