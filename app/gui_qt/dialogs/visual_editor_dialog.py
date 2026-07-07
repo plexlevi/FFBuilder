@@ -533,6 +533,7 @@ class VisualEditorWidget(QWidget):
         editor = None
         if ptype == "combo":
             _cb = QComboBox()
+            _cb.setProperty("no_translate", True)
             _cb.addItems(list(param.get("options", [])))
             _cb.setCurrentText(str(param.get("default", "")))
             _cb.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)

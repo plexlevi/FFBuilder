@@ -194,7 +194,7 @@ def _translate_widget_props(widget: QWidget, *, lang: str) -> None:
                     lang=lang,
                 )
 
-    if isinstance(widget, QComboBox):
+    if isinstance(widget, QComboBox) and not widget.property("no_translate"):
         for idx in range(widget.count()):
             _translate_prop(
                 widget, f"combo_{idx}",

@@ -8,6 +8,22 @@ from typing import Any
 from app.shared.i18n import trs
 
 
+_AUDIO_SUBFIELDS: list[tuple[str, str]] = [
+    ("Audio", "audio"),
+    ("Audio BR", "audio_bitrate"),
+    ("Audio Sample Rate", "audio_sample_rate"),
+    ("Audio Bit Depth", "audio_bit_depth"),
+    ("Audio Channels", "audio_channels"),
+    ("Audio Layout", "audio_channel_layout"),
+    ("Audio Language", "audio_language"),
+    ("Audio Title", "audio_title"),
+    ("Audio LUFS", "lufs"),
+    ("Audio LRA", "lra"),
+    ("Audio True Peak", "true_peak"),
+    ("Audio Loudness Gate", "loudness_gate"),
+]
+
+
 def default_file_info_save_path(input_path: str) -> str:
     cleaned = (input_path or "").strip()
     if not cleaned:
@@ -23,12 +39,22 @@ def build_metadata_rows(
     loudness_keys: set[str],
 ) -> list[tuple[str, str]]:
     is_loading = bool(info.get("__loading__"))
+    video_streams: list[str] = info.get("video_streams", [])
+    audio_streams_data: list[dict] = info.get("audio_streams_data", [])
     rows: list[tuple[str, str]] = []
     for label, key in meta_fields:
         value = str(info.get(key, "—"))
         if is_loading and key in loudness_keys and value in {"—", "unknown", ""}:
             value = trs("Analysis in progress...")
         rows.append((trs(label), value))
+        if key == "hdr" and len(video_streams) > 1:
+            for i, vs in enumerate(video_streams[1:], start=2):
+                rows.append((trs(f"Video {i}"), vs))
+        elif key == "loudness_gate" and len(audio_streams_data) > 1:
+            for n, stream_data in enumerate(audio_streams_data[1:], start=2):
+                for subfield_label, subfield_key in _AUDIO_SUBFIELDS:
+                    label_n = subfield_label.replace("Audio", f"Audio{n}", 1)
+                    rows.append((trs(label_n), str(stream_data.get(subfield_key, "unknown"))))
     return rows
 
 

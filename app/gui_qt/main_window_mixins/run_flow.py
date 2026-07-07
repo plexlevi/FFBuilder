@@ -166,7 +166,7 @@ class RunFlowMixin:
 
     def _expand_internal_macros(self, cmd: str) -> str:
         input_path = str(self.current_file_info.get("path", "") or "")
-        return cmd_macros.expand_map_all(cmd, input_path, self._ffprobe_bin or "")
+        return cmd_macros.expand_map_channel(cmd, input_path, self._ffprobe_bin or "")
 
     def _apply_template(self) -> None:
         tmpl = resolve_template_by_index(self._template_manager.templates, self._current_template_idx)
@@ -256,9 +256,6 @@ class RunFlowMixin:
                 return
             else:
                 self._cancel_loudness_analysis()
-
-        if not confirm_run_command(self, command):
-            return
 
         self._execute_run(command)
 

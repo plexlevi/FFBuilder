@@ -269,6 +269,90 @@ def _extract_hdr_metadata(stream: dict) -> dict:
     return out
 
 
+def _compact_video_summary(stream: dict) -> str:
+    """Build a compact one-line summary of a video stream for display."""
+    codec = stream.get("codec_name", "unknown").upper()
+    w = stream.get("width", 0)
+    h = stream.get("height", 0)
+    res = f" {w}x{h}" if w and h else ""
+    fps_raw = stream.get("r_frame_rate", "")
+    fps_str = ""
+    if fps_raw and "/" in fps_raw:
+        try:
+            num, den = fps_raw.split("/")
+            fps_val = float(num) / float(den)
+            fps_str = " " + f"{fps_val:.3f}".rstrip("0").rstrip(".") + "fps"
+        except (ValueError, ZeroDivisionError):
+            pass
+    return f"{codec}{res}{fps_str}".strip()
+
+
+def _compact_audio_summary(stream: dict) -> str:
+    """Build a compact one-line summary of an audio stream for display."""
+    codec = stream.get("codec_name", "unknown").upper()
+    sample_rate = stream.get("sample_rate", "")
+    ch_layout = stream.get("channel_layout", "")
+    channels = str(stream.get("channels", ""))
+    tags = stream.get("tags", {}) if isinstance(stream.get("tags", {}), dict) else {}
+    language = tags.get("language", "")
+    parts = [x for x in [
+        codec,
+        f"{sample_rate}Hz" if sample_rate else "",
+        ch_layout or (f"{channels}ch" if channels else ""),
+        language if language and language not in ("und", "") else "",
+    ] if x]
+    return ", ".join(parts)
+
+
+def _extract_audio_stream_data(stream: dict) -> dict:
+    """Extract display-ready data dict for a single audio stream."""
+    acodec = stream.get("codec_name", "").upper()
+    sample_rate = stream.get("sample_rate", "")
+    ch_layout = stream.get("channel_layout", "")
+    channels = str(stream.get("channels", ""))
+    sample_fmt = stream.get("sample_fmt", "")
+    tags = stream.get("tags", {}) if isinstance(stream.get("tags", {}), dict) else {}
+
+    a_bits = stream.get("bits_per_raw_sample") or stream.get("bits_per_coded_sample")
+    if (not a_bits or str(a_bits) in ("", "0")) and sample_fmt:
+        fmt_lower = str(sample_fmt).lower()
+        if "s16" in fmt_lower:
+            a_bits = "16"
+        elif "s24" in fmt_lower:
+            a_bits = "24"
+        elif "s32" in fmt_lower or "flt" in fmt_lower:
+            a_bits = "32"
+
+    audio_parts = [x for x in [
+        acodec,
+        f"{sample_rate} Hz" if sample_rate else "",
+        ch_layout or channels,
+    ] if x]
+
+    abr = stream.get("bit_rate", "")
+    bitrate_str = "unknown"
+    if abr:
+        try:
+            bitrate_str = f"{int(abr) // 1000} kb/s"
+        except (ValueError, TypeError):
+            pass
+
+    return {
+        "audio": ", ".join(audio_parts) if audio_parts else "unknown",
+        "audio_bitrate": bitrate_str,
+        "audio_sample_rate": f"{sample_rate} Hz" if sample_rate else "unknown",
+        "audio_bit_depth": f"{a_bits} bit" if a_bits and str(a_bits) not in ("", "0") else "unknown",
+        "audio_channels": channels if channels else "unknown",
+        "audio_channel_layout": ch_layout if ch_layout else "unknown",
+        "audio_language": (str(tags.get("language", "") or "").strip() or "unknown").replace("und", "unknown"),
+        "audio_title": str(tags.get("title", "") or "").strip() or "—",
+        "lufs": "unknown",
+        "lra": "unknown",
+        "true_peak": "unknown",
+        "loudness_gate": "unknown",
+    }
+
+
 def enrich_info_with_loudness(
     info: dict,
     file_path: str,
@@ -296,6 +380,13 @@ def enrich_info_with_loudness(
             out["true_peak"] = loud.get("true_peak", "unknown")
             out["loudness_gate"] = loud.get("loudness_gate", "unknown")
             out["loudnorm_offset"] = loud.get("loudnorm_offset", "unknown")
+            # Propagate loudness to stream 1 in audio_streams_data
+            if out.get("audio_streams_data"):
+                out["audio_streams_data"] = [dict(s) for s in out["audio_streams_data"]]
+                out["audio_streams_data"][0]["lufs"] = out["lufs"]
+                out["audio_streams_data"][0]["lra"] = out["lra"]
+                out["audio_streams_data"][0]["true_peak"] = out["true_peak"]
+                out["audio_streams_data"][0]["loudness_gate"] = out["loudness_gate"]
 
     return out
 
@@ -340,6 +431,7 @@ def extract_info(
         "audio_bit_depth":   "unknown",
         "audio_profile":     "unknown",
         "audio_language":    "unknown",
+        "audio_title":      "—",
         "loudnorm_ready":    "no",
         "lufs":             "unknown",
         "lra":              "unknown",
@@ -348,6 +440,15 @@ def extract_info(
         "loudnorm_offset":  "unknown",
         "container_format": "unknown",
         "bitrate":          "unknown",
+        "meta_title":       "—",
+        "meta_date":        "—",
+        "meta_encoder":     "—",
+        "meta_comment":     "—",
+        "video_title":      "—",
+        "video_language":   "—",
+        "video_streams":    [],
+        "audio_streams":    [],
+        "audio_streams_data": [],
         "__duration_seconds": 0.0,
     }
 
@@ -395,6 +496,22 @@ def extract_info(
         fmt_name.upper() or "unknown"
     )
 
+    # Container / global tags
+    fmt_tags = fmt.get("tags", {}) or {}
+    _t = lambda key, *aliases: next(
+        (str(fmt_tags.get(k, "") or "").strip() for k in (key, *aliases) if fmt_tags.get(k)),
+        ""
+    )
+    if _t("title"):
+        info["meta_title"] = _t("title")
+    if _t("date", "YEAR", "year", "creation_time"):
+        raw_date = _t("date", "YEAR", "year", "creation_time")
+        info["meta_date"] = raw_date[:10] if len(raw_date) > 10 and "T" in raw_date else raw_date
+    if _t("ENCODER", "encoder", "encoded_by"):
+        info["meta_encoder"] = _t("ENCODER", "encoder", "encoded_by")
+    if _t("comment", "COMMENT", "description"):
+        info["meta_comment"] = _t("comment", "COMMENT", "description")
+
     # Duration
     try:
         dur = float(fmt.get("duration", 0))
@@ -412,152 +529,176 @@ def extract_info(
         pass
 
     # --- Streams ---
+    video_streams: list[str] = []
+    audio_streams: list[str] = []
+    audio_streams_data: list[dict] = []
     for stream in probe.get("streams", []):
         codec_type = stream.get("codec_type", "")
 
-        if codec_type == "video" and info["codec"] == "unknown":
-            info["codec"] = stream.get("codec_name", "unknown").upper()
+        if codec_type == "video":
+            video_streams.append(_compact_video_summary(stream))
+            if info["codec"] == "unknown":
+                info["codec"] = stream.get("codec_name", "unknown").upper()
 
-            w = stream.get("width", 0)
-            h = stream.get("height", 0)
-            if w and h:
-                info["resolution"] = f"{w}x{h}"
+                w = stream.get("width", 0)
+                h = stream.get("height", 0)
+                if w and h:
+                    info["resolution"] = f"{w}x{h}"
 
-            # FPS
-            fps_raw = stream.get("r_frame_rate", "")
-            if fps_raw and "/" in fps_raw:
-                try:
-                    num, den = fps_raw.split("/")
-                    fps_val = float(num) / float(den)
-                    info["fps"] = f"{fps_val:.3f}".rstrip("0").rstrip(".")
-                except (ValueError, ZeroDivisionError):
-                    pass
+                # FPS
+                fps_raw = stream.get("r_frame_rate", "")
+                if fps_raw and "/" in fps_raw:
+                    try:
+                        num, den = fps_raw.split("/")
+                        fps_val = float(num) / float(den)
+                        info["fps"] = f"{fps_val:.3f}".rstrip("0").rstrip(".")
+                    except (ValueError, ZeroDivisionError):
+                        pass
 
-            # Display aspect ratio
-            dar = stream.get("display_aspect_ratio", "")
-            info["aspect_ratio"] = dar if dar and dar != "0:1" else "unknown"
+                # Display aspect ratio
+                dar = stream.get("display_aspect_ratio", "")
+                info["aspect_ratio"] = dar if dar and dar != "0:1" else "unknown"
 
-            # Pixel format
-            pix = stream.get("pix_fmt", "")
-            if pix:
-                info["color"] = pix
+                # Pixel format
+                pix = stream.get("pix_fmt", "")
+                if pix:
+                    info["color"] = pix
 
-            info["format"] = stream.get("codec_long_name", info["codec"])
+                info["format"] = stream.get("codec_long_name", info["codec"])
 
-            # Profile
-            profile = stream.get("profile", "")
-            if profile and profile.lower() != "unknown":
-                info["profile"] = profile
+                # Profile
+                profile = stream.get("profile", "")
+                if profile and profile.lower() != "unknown":
+                    info["profile"] = profile
 
-            # Level
-            level_raw = stream.get("level", -1)
-            if isinstance(level_raw, int) and level_raw > 0:
-                codec_lower = stream.get("codec_name", "").lower()
-                if codec_lower in ("h264", "avc"):
-                    info["level"] = f"{level_raw / 10:.1f}"
-                elif codec_lower in ("hevc", "h265"):
-                    info["level"] = f"{level_raw / 30:.1f}"
+                # Level
+                level_raw = stream.get("level", -1)
+                if isinstance(level_raw, int) and level_raw > 0:
+                    codec_lower = stream.get("codec_name", "").lower()
+                    if codec_lower in ("h264", "avc"):
+                        info["level"] = f"{level_raw / 10:.1f}"
+                    elif codec_lower in ("hevc", "h265"):
+                        info["level"] = f"{level_raw / 30:.1f}"
+                    else:
+                        info["level"] = str(level_raw)
+
+                # Bit depth
+                bits = stream.get("bits_per_raw_sample") or stream.get("bits_per_coded_sample")
+                if bits and str(bits) not in ("0", ""):
+                    info["bit_depth"] = f"{bits} bit"
+
+                # Video stream bitrate
+                vbr = stream.get("bit_rate", "")
+                if vbr:
+                    try:
+                        info["video_bitrate"] = f"{int(vbr) // 1000} kb/s"
+                    except (ValueError, TypeError):
+                        pass
+
+                # Color space
+                cs = stream.get("color_space", "")
+                if cs:
+                    info["color_space"] = cs
+
+                # Color transfer
+                ct = stream.get("color_transfer", "")
+                if ct:
+                    info["color_transfer"] = ct
+
+                # Color primaries
+                cp = stream.get("color_primaries", "")
+                if cp:
+                    info["color_primaries"] = cp
+
+                # HDR metadata (side data + transfer/primaries heuristics)
+                info.update(_extract_hdr_metadata(stream))
+
+                # Field order
+                fo = stream.get("field_order", "")
+                if fo:
+                    info["field_order"] = fo
+
+                # Frame count
+                nb = stream.get("nb_frames", "")
+                if nb:
+                    info["nb_frames"] = nb
+
+                # Video stream tags
+                vid_tags = stream.get("tags", {}) or {}
+                vid_title = str(vid_tags.get("title", "") or "").strip()
+                vid_lang = str(vid_tags.get("language", "") or "").strip()
+                if vid_title:
+                    info["video_title"] = vid_title
+                if vid_lang and vid_lang not in ("und", ""):
+                    info["video_language"] = vid_lang
+
+        elif codec_type == "audio":
+            audio_streams.append(_compact_audio_summary(stream))
+            audio_streams_data.append(_extract_audio_stream_data(stream))
+            if info["audio"] == "no audio":
+                acodec      = stream.get("codec_name", "").upper()
+                sample_rate = stream.get("sample_rate", "")
+                ch_layout   = stream.get("channel_layout", "")
+                channels    = str(stream.get("channels", ""))
+                sample_fmt  = stream.get("sample_fmt", "")
+                a_profile   = stream.get("profile", "")
+
+                tags = stream.get("tags", {}) if isinstance(stream.get("tags", {}), dict) else {}
+                language = tags.get("language", "")
+
+                # Audio bit depth (ha expliciten elérhető)
+                a_bits = stream.get("bits_per_raw_sample") or stream.get("bits_per_coded_sample")
+                if (not a_bits or str(a_bits) in ("", "0")) and sample_fmt:
+                    fmt_lower = str(sample_fmt).lower()
+                    if "s16" in fmt_lower:
+                        a_bits = "16"
+                    elif "s24" in fmt_lower:
+                        a_bits = "24"
+                    elif "s32" in fmt_lower or "flt" in fmt_lower:
+                        a_bits = "32"
+
+                audio_parts = [x for x in [
+                    acodec,
+                    f"{sample_rate} Hz" if sample_rate else "",
+                    ch_layout or channels,
+                ] if x]
+                info["audio"] = ", ".join(audio_parts) if audio_parts else "unknown"
+
+                if sample_rate:
+                    info["audio_sample_rate"] = f"{sample_rate} Hz"
+                if channels:
+                    info["audio_channels"] = channels
+                if ch_layout:
+                    info["audio_channel_layout"] = ch_layout
+                if sample_fmt:
+                    info["audio_sample_fmt"] = sample_fmt
+                if a_bits and str(a_bits) not in ("", "0"):
+                    info["audio_bit_depth"] = f"{a_bits} bit"
+                if a_profile and a_profile.lower() != "unknown":
+                    info["audio_profile"] = a_profile
+                if language:
+                    info["audio_language"] = language
+                a_title = tags.get("title", "")
+                if a_title:
+                    info["audio_title"] = str(a_title).strip()
+
+                # Audio stream bitrate
+                abr = stream.get("bit_rate", "")
+                if abr:
+                    try:
+                        info["audio_bitrate"] = f"{int(abr) // 1000} kb/s"
+                    except (ValueError, TypeError):
+                        pass
+
+                # Loudnorm előkészítéshez legfontosabb input paraméterek megléte
+                if sample_rate and channels:
+                    info["loudnorm_ready"] = "yes"
                 else:
-                    info["level"] = str(level_raw)
+                    info["loudnorm_ready"] = "partial"
 
-            # Bit depth
-            bits = stream.get("bits_per_raw_sample") or stream.get("bits_per_coded_sample")
-            if bits and str(bits) not in ("0", ""):
-                info["bit_depth"] = f"{bits} bit"
-
-            # Video stream bitrate
-            vbr = stream.get("bit_rate", "")
-            if vbr:
-                try:
-                    info["video_bitrate"] = f"{int(vbr) // 1000} kb/s"
-                except (ValueError, TypeError):
-                    pass
-
-            # Color space
-            cs = stream.get("color_space", "")
-            if cs:
-                info["color_space"] = cs
-
-            # Color transfer
-            ct = stream.get("color_transfer", "")
-            if ct:
-                info["color_transfer"] = ct
-
-            # Color primaries
-            cp = stream.get("color_primaries", "")
-            if cp:
-                info["color_primaries"] = cp
-
-            # HDR metadata (side data + transfer/primaries heuristics)
-            info.update(_extract_hdr_metadata(stream))
-
-            # Field order
-            fo = stream.get("field_order", "")
-            if fo:
-                info["field_order"] = fo
-
-            # Frame count
-            nb = stream.get("nb_frames", "")
-            if nb:
-                info["nb_frames"] = nb
-
-        elif codec_type == "audio" and info["audio"] == "no audio":
-            acodec      = stream.get("codec_name", "").upper()
-            sample_rate = stream.get("sample_rate", "")
-            ch_layout   = stream.get("channel_layout", "")
-            channels    = str(stream.get("channels", ""))
-            sample_fmt  = stream.get("sample_fmt", "")
-            a_profile   = stream.get("profile", "")
-
-            tags = stream.get("tags", {}) if isinstance(stream.get("tags", {}), dict) else {}
-            language = tags.get("language", "")
-
-            # Audio bit depth (ha expliciten elérhető)
-            a_bits = stream.get("bits_per_raw_sample") or stream.get("bits_per_coded_sample")
-            if (not a_bits or str(a_bits) in ("", "0")) and sample_fmt:
-                fmt_lower = str(sample_fmt).lower()
-                if "s16" in fmt_lower:
-                    a_bits = "16"
-                elif "s24" in fmt_lower:
-                    a_bits = "24"
-                elif "s32" in fmt_lower or "flt" in fmt_lower:
-                    a_bits = "32"
-
-            audio_parts = [x for x in [
-                acodec,
-                f"{sample_rate} Hz" if sample_rate else "",
-                ch_layout or channels,
-            ] if x]
-            info["audio"] = ", ".join(audio_parts) if audio_parts else "unknown"
-
-            if sample_rate:
-                info["audio_sample_rate"] = f"{sample_rate} Hz"
-            if channels:
-                info["audio_channels"] = channels
-            if ch_layout:
-                info["audio_channel_layout"] = ch_layout
-            if sample_fmt:
-                info["audio_sample_fmt"] = sample_fmt
-            if a_bits and str(a_bits) not in ("", "0"):
-                info["audio_bit_depth"] = f"{a_bits} bit"
-            if a_profile and a_profile.lower() != "unknown":
-                info["audio_profile"] = a_profile
-            if language:
-                info["audio_language"] = language
-
-            # Audio stream bitrate
-            abr = stream.get("bit_rate", "")
-            if abr:
-                try:
-                    info["audio_bitrate"] = f"{int(abr) // 1000} kb/s"
-                except (ValueError, TypeError):
-                    pass
-
-            # Loudnorm előkészítéshez legfontosabb input paraméterek megléte
-            if sample_rate and channels:
-                info["loudnorm_ready"] = "yes"
-            else:
-                info["loudnorm_ready"] = "partial"
+    info["video_streams"] = video_streams
+    info["audio_streams"] = audio_streams
+    info["audio_streams_data"] = audio_streams_data
 
     if include_loudness:
         info = enrich_info_with_loudness(info, file_path, ffmpeg=ffmpeg)
