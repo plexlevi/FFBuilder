@@ -79,7 +79,7 @@ class _LoudnessWorker(QRunnable):
 
     def run(self) -> None:
         from app.gui_qt.dialogs.audio_analysis_dialog import (
-            _AudioAnalysisWorker, _RESULT_CACHE, _PENDING_PATHS, _cache_key, build_file_info_patch,
+            _AudioAnalysisWorker, _RESULT_CACHE, _ALL_RESULTS_CACHE, _PENDING_PATHS, _cache_key, build_file_info_patch,
         )
         inner = _AudioAnalysisWorker(self._file_path, self._ffmpeg_bin, self._ffprobe_bin)
         # Progress forwarding to the main-window progress bar.
@@ -87,15 +87,21 @@ class _LoudnessWorker(QRunnable):
             lambda pct: self.signals.progress.emit(self._file_path, pct / 100.0)
         )
         try:
-            result = inner._analyze()
+            results = inner._analyze()
         except Exception:
             _PENDING_PATHS.discard(self._file_path)
             self.signals.finished.emit(self._file_path, dict(self._base_info))
             return
-        _RESULT_CACHE[_cache_key(self._file_path)] = result
+        if not results:
+            _PENDING_PATHS.discard(self._file_path)
+            self.signals.finished.emit(self._file_path, dict(self._base_info))
+            return
+        key = _cache_key(self._file_path)
+        _RESULT_CACHE[key] = results[0]
+        _ALL_RESULTS_CACHE[key] = results
         _PENDING_PATHS.discard(self._file_path)
         enriched = dict(self._base_info)
-        enriched.update(build_file_info_patch(result))
+        enriched.update(build_file_info_patch(results[0]))
         self.signals.finished.emit(self._file_path, enriched)
 
 

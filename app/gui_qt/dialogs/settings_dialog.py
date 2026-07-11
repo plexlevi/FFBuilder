@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QRadioButton,
+    QSpinBox,
     QVBoxLayout,
 )
 
@@ -70,6 +71,8 @@ class SettingsDialog(QDialog):
         self.check_updates_button = w.findChild(QPushButton, "checkUpdatesButton")
         self.reset_layout_button = w.findChild(QPushButton, "resetLayoutButton")
         self.language_combo = w.findChild(QComboBox, "languageCombo")
+        self.auto_delete_log_check = w.findChild(QCheckBox, "autoDeleteLogCheck")
+        self.log_retention_days = w.findChild(QSpinBox, "logRetentionDays")
         self._populate_language_combo()
 
         self.reset_layout_button.clicked.connect(self._request_layout_reset)
@@ -90,6 +93,12 @@ class SettingsDialog(QDialog):
         self.auto_ebu_check.toggled.connect(self._on_settings_changed)
         self.show_console_check.toggled.connect(self._on_settings_changed)
         self.auto_update_check.toggled.connect(self._on_settings_changed)
+        self.auto_delete_log_check.toggled.connect(self._on_log_delete_toggled)
+        self.auto_delete_log_check.toggled.connect(self._on_settings_changed)
+        self.log_retention_days.valueChanged.connect(self._on_settings_changed)
+
+    def _on_log_delete_toggled(self, checked: bool) -> None:
+        self.log_retention_days.setEnabled(checked)
 
     def _load_values(self) -> None:
         self._is_loading_values = True
@@ -109,6 +118,10 @@ class SettingsDialog(QDialog):
         self.auto_ebu_check.setChecked(bool(self._settings.get("auto_ebu_analysis", True)))
         self.show_console_check.setChecked(bool(self._settings.get("show_ffmpeg_console", False)))
         self.auto_update_check.setChecked(bool(self._settings.get("auto_check_updates", True)))
+        auto_delete = bool(self._settings.get("auto_delete_log", False))
+        self.auto_delete_log_check.setChecked(auto_delete)
+        self.log_retention_days.setValue(int(self._settings.get("log_retention_days", 30)))
+        self.log_retention_days.setEnabled(auto_delete)
         current_lang = get_language()
         for i in range(self.language_combo.count()):
             if self.language_combo.itemData(i) == current_lang:
@@ -175,6 +188,8 @@ class SettingsDialog(QDialog):
                 "auto_ebu_analysis": self.auto_ebu_check.isChecked(),
                 "show_ffmpeg_console": self.show_console_check.isChecked(),
                 "auto_check_updates": self.auto_update_check.isChecked(),
+                "auto_delete_log": self.auto_delete_log_check.isChecked(),
+                "log_retention_days": self.log_retention_days.value(),
             }
         )
         if lang_changed:

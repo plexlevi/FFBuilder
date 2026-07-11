@@ -56,6 +56,25 @@ def clear_all() -> None:
         _LOG_PATH.unlink()
 
 
+def purge_old_entries(days: int) -> int:
+    """Delete entries older than `days` days. Returns the number of entries removed."""
+    from datetime import timedelta
+    cutoff = datetime.now() - timedelta(days=days)
+    entries = read_entries()
+    kept = [e for e in entries if _parse_entry_ts(e) >= cutoff]
+    removed = len(entries) - len(kept)
+    if removed:
+        _write_entries(kept)
+    return removed
+
+
+def _parse_entry_ts(entry: dict) -> datetime:
+    try:
+        return datetime.strptime(entry.get("ts", ""), "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return datetime.min
+
+
 def _write_entries(entries: list[dict]) -> None:
     _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _LOG_PATH.open("w", encoding="utf-8") as fh:

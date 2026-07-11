@@ -276,6 +276,86 @@ QCheckBox { color: #e0e0e0; }</string>
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="logGroup">
+     <property name="title">
+      <string>Log</string>
+     </property>
+     <layout class="QVBoxLayout" name="logGroupLayout">
+      <item>
+       <layout class="QHBoxLayout" name="logAutoDeleteRow">
+        <item>
+         <widget class="QCheckBox" name="autoDeleteLogCheck">
+          <property name="text">
+           <string>Automatically delete old log entries</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="logAutoDeleteSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="logRetentionRow">
+        <item>
+         <widget class="QLabel" name="logRetentionLabel">
+          <property name="text">
+           <string>Delete entries older than</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="logRetentionDays">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>3650</number>
+          </property>
+          <property name="value">
+           <number>10</number>
+          </property>
+          <property name="maximumWidth">
+           <number>70</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="logRetentionDaysLabel">
+          <property name="text">
+           <string>days</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="logRetentionSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>

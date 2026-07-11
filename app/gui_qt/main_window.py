@@ -38,6 +38,7 @@ from app.gui_qt.main_window_parts import (
     _LoudnessWorker,
     _MetadataWorker,
     clear_status_display,
+    is_process_running,
     resolve_notification_sound_path,
     set_status_display,
 )
@@ -104,6 +105,7 @@ class MainWindow(
         self._queue_start_button: QPushButton | None = None
         self._queue_stop_button: QPushButton | None = None
         self._queue_clear_button: QPushButton | None = None
+        self._queue_clear_done_button: QPushButton | None = None
         self._pending_loudness_paths: set[str] = set()
         self._loudness_progress: dict[str, float] = {}
         self._auto_run_command: str | None = None
@@ -119,6 +121,7 @@ class MainWindow(
         self._wire_widgets()
         self._build_queue_panel()
         self._build_log_panel()
+        self._purge_old_log_entries()
         self._load_queue_state()
         self._apply_theme_palette()
         self._apply_platform_icons()
@@ -332,6 +335,8 @@ class MainWindow(
         self.files_status_label.setText(trs("{var} files loaded").replace("{var}", str(file_count)))
 
     def _on_status_clear_timer(self) -> None:
+        if is_process_running(self._process):
+            return
         clear_status_display(self.run_progress)
 
     def _set_status(self, text: str, timeout_ms: int = 0) -> None:

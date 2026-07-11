@@ -312,6 +312,14 @@ class Ui_MainWindow(object):
 
         self.queueButtonLayout.addWidget(self.queueClearButton)
 
+        self.queueClearDoneButton = QPushButton(self.queueTab)
+        self.queueClearDoneButton.setObjectName(u"queueClearDoneButton")
+        icon_clear = QIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditClear))
+        self.queueClearDoneButton.setIcon(icon_clear)
+        self.queueClearDoneButton.setIconSize(QSize(24, 24))
+
+        self.queueButtonLayout.addWidget(self.queueClearDoneButton)
+
         self.queueButtonSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.queueButtonLayout.addItem(self.queueButtonSpacer)
@@ -518,6 +526,7 @@ class Ui_MainWindow(object):
         self.builderTabWidget.setTabText(self.builderTabWidget.indexOf(self.templatesTab), QCoreApplication.translate("MainWindow", u"Templates", None))
         self.queueStatusLabel.setText(QCoreApplication.translate("MainWindow", u"0 items in queue", None))
         self.queueClearButton.setText("")
+        self.queueClearDoneButton.setText(QCoreApplication.translate("MainWindow", u"Clear done", None))
         ___qtreewidgetitem1 = self.queueTreeWidget.headerItem()
         ___qtreewidgetitem1.setText(2, QCoreApplication.translate("MainWindow", u"Status", None));
         ___qtreewidgetitem1.setText(1, QCoreApplication.translate("MainWindow", u"Output", None));

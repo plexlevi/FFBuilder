@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.shared import conversion_log
+from app.shared import settings as settings_manager
 from app.shared.i18n import trs
 
 _STATUS_COLORS = {
@@ -63,6 +64,17 @@ class LogTabMixin:
         self._log_tree.installEventFilter(self)
 
         self._refresh_log_view()
+
+    def _purge_old_log_entries(self) -> None:
+        s = settings_manager.get_settings()
+        if not bool(s.get("auto_delete_log", False)):
+            return
+        days = int(s.get("log_retention_days", 30))
+        if days < 1:
+            return
+        removed = conversion_log.purge_old_entries(days)
+        if removed:
+            self._refresh_log_view()
 
     def _refresh_log_view(self) -> None:
         if not hasattr(self, "_log_tree"):

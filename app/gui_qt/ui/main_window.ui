@@ -542,6 +542,22 @@
                    </widget>
                   </item>
                   <item>
+                   <widget class="QPushButton" name="queueClearDoneButton">
+                    <property name="text">
+                     <string>Clear done</string>
+                    </property>
+                    <property name="icon">
+                     <iconset theme="QIcon::ThemeIcon::EditClear"/>
+                    </property>
+                    <property name="iconSize">
+                     <size>
+                      <width>24</width>
+                      <height>24</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <spacer name="queueButtonSpacer">
                     <property name="orientation">
                      <enum>Qt::Orientation::Horizontal</enum>

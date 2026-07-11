@@ -15,6 +15,7 @@ from PySide6.QtCore import QFile, QObject, QPointF, QRectF, QRunnable, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPalette, QPen, QPixmap
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QDialog,
     QFormLayout,
@@ -37,7 +38,7 @@ from app.shared.i18n import trs
 # azonnal megjelenítjük az eredményt, és a főablak LoudnessWorker-je is
 # kihagyja az újabb ffmpeg futtatást.
 _RESULT_CACHE: dict[tuple[str, int], "LoudnessAnalysisResult"] = {}
-
+_ALL_RESULTS_CACHE: dict[tuple[str, int], "list[LoudnessAnalysisResult]"] = {}
 # Fájlok amelyekre jelenleg fut a háttér-elemzés (_LoudnessWorker)
 _PENDING_PATHS: set[str] = set()
 
@@ -53,6 +54,11 @@ def _cache_key(file_path: str) -> tuple[str, int]:
 def get_cached_result(file_path: str) -> "LoudnessAnalysisResult | None":
     """Visszaadja a file korábban mentett teljes elemzési eredményét, ha létezik."""
     return _RESULT_CACHE.get(_cache_key(file_path))
+
+
+def get_all_cached_results(file_path: str) -> "list[LoudnessAnalysisResult] | None":
+    """Visszaadja az összes sáv elemzési eredményét, ha létezik."""
+    return _ALL_RESULTS_CACHE.get(_cache_key(file_path))
 
 
 def build_file_info_patch(result: "LoudnessAnalysisResult") -> dict[str, str]:
@@ -87,6 +93,8 @@ class LoudnessAnalysisResult:
     momentary_data: list[tuple[float, float]]
     shortterm_data: list[tuple[float, float]]
     integrated_data: list[tuple[float, float]]
+    track_index: int = 0
+    track_label: str = ""
 
 
 class _AudioAnalysisSignals(QObject):
@@ -111,33 +119,38 @@ class _AudioAnalysisWorker(QRunnable):
             return
         self.signals.finished.emit(result)
 
-    def _analyze(self) -> LoudnessAnalysisResult:
+    def _analyze(self) -> list[LoudnessAnalysisResult]:
         probe_cmd = [
             self.ffprobe_bin,
-            "-v",
-            "quiet",
-            "-print_format",
-            "json",
-            "-show_format",
-            "-show_streams",
-            "-select_streams",
-            "a:0",
+            "-v", "quiet",
+            "-print_format", "json",
+            "-show_format", "-show_streams",
+            "-select_streams", "a",
             self.file_path,
         ]
         probe = subprocess.run(probe_cmd, capture_output=True, text=True, check=True, timeout=30)
-
         payload = json.loads(probe.stdout or "{}")
         streams = payload.get("streams", [])
         if not streams:
             raise RuntimeError("The file does not contain an audio stream.")
-        audio_stream = streams[0]
-
         duration_seconds = 0.0
         try:
             duration_seconds = float((payload.get("format") or {}).get("duration") or 0.0)
         except Exception:
-            duration_seconds = 0.0
+            pass
+        total = len(streams)
+        results: list[LoudnessAnalysisResult] = []
+        for idx, audio_stream in enumerate(streams):
+            results.append(self._analyze_one_stream(idx, audio_stream, duration_seconds, total))
+        return results
 
+    def _analyze_one_stream(
+        self,
+        stream_idx: int,
+        audio_stream: dict,
+        duration_seconds: float,
+        total_streams: int,
+    ) -> LoudnessAnalysisResult:
         sample_rate_hz = "N/A"
         if audio_stream.get("sample_rate"):
             sr = int(audio_stream.get("sample_rate"))
@@ -163,7 +176,8 @@ class _AudioAnalysisWorker(QRunnable):
                 bit_depth = "32 bit"
 
         codec = str(audio_stream.get("codec_name") or "N/A").upper()
-        channels = str(audio_stream.get("channels") or "N/A")
+        channels_n = audio_stream.get("channels")
+        channels = str(channels_n or "N/A")
         bit_rate = "N/A"
         try:
             br = int(audio_stream.get("bit_rate") or 0)
@@ -172,21 +186,19 @@ class _AudioAnalysisWorker(QRunnable):
         except Exception:
             pass
 
+        chan_display = {1: "mono", 2: "stereo", 6: "5.1", 8: "7.1"}.get(
+            int(channels_n or 0), f"{channels}ch"
+        )
+        track_label = f"Track {stream_idx + 1} – {chan_display}, {codec}"
+
         analysis_cmd = [
             self.ffmpeg_bin,
             "-hide_banner",
-            "-i",
-            self.file_path,
-            "-map",
-            "0:a:0",
-            "-vn",
-            "-sn",
-            "-dn",
-            "-af",
-            "ebur128=peak=true",
-            "-f",
-            "null",
-            "-",
+            "-i", self.file_path,
+            "-map", f"0:a:{stream_idx}",
+            "-vn", "-sn", "-dn",
+            "-af", "ebur128=peak=true",
+            "-f", "null", "-",
         ]
 
         process = subprocess.Popen(
@@ -218,10 +230,11 @@ class _AudioAnalysisWorker(QRunnable):
                 mm = int(tm.group(2))
                 ss = float(tm.group(3))
                 current = hh * 3600 + mm * 60 + ss
-                pct = int(max(0.0, min(100.0, (current / duration_seconds) * 100.0)))
-                if pct != _last_emitted_pct:
-                    _last_emitted_pct = pct
-                    self.signals.progress.emit(pct)
+                local_pct = int(max(0.0, min(100.0, (current / duration_seconds) * 100.0)))
+                overall_pct = int((stream_idx * 100 + local_pct) / total_streams)
+                if overall_pct != _last_emitted_pct:
+                    _last_emitted_pct = overall_pct
+                    self.signals.progress.emit(overall_pct)
 
             m = line_pattern.search(line)
             if m:
@@ -238,9 +251,10 @@ class _AudioAnalysisWorker(QRunnable):
 
         process.wait(timeout=1200)
         if process.returncode not in (0,):
-            raise RuntimeError("FFmpeg loudness analysis failed.")
+            raise RuntimeError(f"FFmpeg loudness analysis failed for track {stream_idx + 1}.")
 
-        self.signals.progress.emit(100)
+        if stream_idx == total_streams - 1:
+            self.signals.progress.emit(100)
 
         stderr_text = "".join(stderr_lines)
         summary = stderr_text[stderr_text.rfind("Summary:") :] if "Summary:" in stderr_text else stderr_text
@@ -265,6 +279,8 @@ class _AudioAnalysisWorker(QRunnable):
 
         return LoudnessAnalysisResult(
             filename=os.path.basename(self.file_path),
+            track_index=stream_idx,
+            track_label=track_label,
             sample_rate_hz=sample_rate_hz,
             bit_depth=bit_depth,
             codec=codec,
@@ -376,6 +392,8 @@ class LoudnessGraphWidget(QWidget):
         p.setFont(fn_font)
         p.setPen(text_col)
         raw_name = os.path.basename(self._result.filename)
+        if self._result.track_label:
+            raw_name = f"{raw_name} – {self._result.track_label}"
         display_name = raw_name if len(raw_name) <= 80 else raw_name[:77] + "…"
         p.drawText(
             QRectF(px0, r.y(), pw, T),
@@ -551,8 +569,14 @@ class AudioAnalysisDialog(QDialog):
         self._ffmpeg_bin = ffmpeg_bin
         self._ffprobe_bin = ffprobe_bin
         self._thread_pool = QThreadPool.globalInstance()
-        self._result: LoudnessAnalysisResult | None = None
+        self._results: list[LoudnessAnalysisResult] = []
+        self._current_track_idx: int = 0
         self._graph_widget: LoudnessGraphWidget | None = None
+        self._graph_container: QGroupBox | None = None
+        self._graph_layout: QVBoxLayout | None = None
+        self._loudness_value_labels: dict[str, QLabel] = {}
+        self._loudness_keys: list[tuple[str, str]] = []
+        self._track_combo: QComboBox | None = None
 
         self.setWindowTitle(trs("Audio analysis"))
         self.resize(760, 780)
@@ -561,9 +585,9 @@ class AudioAnalysisDialog(QDialog):
         self._wait_timer: QTimer | None = None
         self._build_ui()
 
-        cached = get_cached_result(self._file_path)
-        if cached is not None:
-            QTimer.singleShot(0, lambda: self._on_finished(cached))
+        all_cached = get_all_cached_results(self._file_path)
+        if all_cached is not None:
+            QTimer.singleShot(0, lambda r=all_cached: self._on_finished(r))
         elif self._file_path in _PENDING_PATHS:
             self.status_label.setText(trs("Background analysis in progress, waiting..."))
             self._wait_timer = QTimer(self)
@@ -576,9 +600,9 @@ class AudioAnalysisDialog(QDialog):
         return exec_with_backdrop(self)
 
     def get_file_info_patch(self) -> dict[str, str]:
-        if self._result is None:
+        if not self._results:
             return {}
-        return build_file_info_patch(self._result)
+        return build_file_info_patch(self._results[0])
 
     def _build_ui(self) -> None:
         _ui_path = Path(__file__).parent.parent / "ui" / "audio_analysis_dialog.ui"
@@ -605,10 +629,10 @@ class AudioAnalysisDialog(QDialog):
 
     def _wait_for_background_result(self) -> None:
         """Megvárja, hogy a főablak háttér-elemzése végezzen, majd megjeleníti az eredményt."""
-        cached = get_cached_result(self._file_path)
-        if cached is not None:
+        all_cached = get_all_cached_results(self._file_path)
+        if all_cached is not None:
             self._wait_timer.stop()
-            self._on_finished(cached)
+            self._on_finished(all_cached)
             return
         if self._file_path not in _PENDING_PATHS:
             # Worker már nem fut, de nincs cache (hiba lehetett) → saját worker
@@ -627,11 +651,16 @@ class AudioAnalysisDialog(QDialog):
         pct = max(0, min(100, int(value)))
         self.status_label.setText(f"{pct}%")
 
-    def _on_finished(self, result: LoudnessAnalysisResult) -> None:
-        _RESULT_CACHE[_cache_key(self._file_path)] = result  # cache for next open / main window
-        self._result = result
+    def _on_finished(self, results: list[LoudnessAnalysisResult]) -> None:
+        if not results:
+            return
+        key = _cache_key(self._file_path)
+        _RESULT_CACHE[key] = results[0]
+        _ALL_RESULTS_CACHE[key] = results
+        self._results = results
+        self._current_track_idx = 0
         self.status_label.setVisible(False)
-        self._render_results(result)
+        self._render_results(results)
         self.scroll_area.setVisible(True)
         self.save_button.setEnabled(True)
         self.ready = True
@@ -650,7 +679,8 @@ class AudioAnalysisDialog(QDialog):
             self.move(x, y)
         apply_rounded_mask(self)
 
-    def _render_results(self, result: LoudnessAnalysisResult) -> None:
+    def _render_results(self, results: list[LoudnessAnalysisResult]) -> None:
+        result = results[0]
         file_info = {
             "Sample Rate": result.sample_rate_hz,
             "Bit Depth": result.bit_depth,
@@ -658,21 +688,40 @@ class AudioAnalysisDialog(QDialog):
             "Channels": result.channels,
             "Bit Rate": result.bit_rate,
         }
-        loudness_info = {
-            "Integrated": result.integrated,
-            "Loudness gate": result.loudness_gate,
-            "True peak max": result.true_peak_max,
-            "Momentary max": result.momentary_max,
-            "Short term max": result.short_term_max,
-            "Short term": result.short_term,
-            "Loudness range": result.loudness_range,
-        }
+        self._loudness_keys = [
+            ("Integrated", "integrated"),
+            ("Loudness gate", "loudness_gate"),
+            ("True peak max", "true_peak_max"),
+            ("Momentary max", "momentary_max"),
+            ("Short term max", "short_term_max"),
+            ("Short term", "short_term"),
+            ("Loudness range", "loudness_range"),
+        ]
+        loudness_info = {k: getattr(result, attr) for k, attr in self._loudness_keys}
+        loudness_group, self._loudness_value_labels = self._create_updatable_group(
+            trs("Loudness Analysis"), loudness_info
+        )
 
         top_row = QHBoxLayout()
         top_row.setSpacing(10)
         top_row.addWidget(self._create_info_group(trs("File Information"), file_info), 1)
-        top_row.addWidget(self._create_info_group(trs("Loudness Analysis"), loudness_info), 1)
+        top_row.addWidget(loudness_group, 1)
         self.results_layout.addLayout(top_row)
+
+        if len(results) > 1:
+            combo_row = QHBoxLayout()
+            combo_lbl = QLabel(trs("Audio track:"))
+            combo_lbl.setStyleSheet("font-size: 11pt;")
+            self._track_combo = QComboBox()
+            self._track_combo.setStyleSheet("font-size: 11pt;")
+            for r in results:
+                self._track_combo.addItem(r.track_label)
+            self._track_combo.currentIndexChanged.connect(self._switch_track)
+            combo_row.addWidget(combo_lbl)
+            combo_row.addWidget(self._track_combo)
+            combo_row.addStretch()
+            self.results_layout.addLayout(combo_row)
+
         self.results_layout.addWidget(self._create_graph_group(result))
         self.results_layout.addStretch(1)
 
@@ -691,14 +740,18 @@ class AudioAnalysisDialog(QDialog):
     def _create_graph_group(self, result: LoudnessAnalysisResult) -> QGroupBox:
         group = QGroupBox(trs("Loudness over time"))
         layout = QVBoxLayout(group)
+        self._graph_container = group
+        self._graph_layout = layout
         self._graph_widget = LoudnessGraphWidget(result, parent=group)
         layout.addWidget(self._graph_widget)
         return group
 
     def _save_graph(self) -> None:
-        if self._result is None or self._graph_widget is None:
+        if not self._results or self._graph_widget is None:
             return
-        base_name = f"{Path(self._file_path).stem}_loudnessGraph.png"
+        idx = self._current_track_idx
+        suffix = f"_track{idx + 1}" if len(self._results) > 1 else ""
+        base_name = f"{Path(self._file_path).stem}_loudnessGraph{suffix}.png"
         desktop = str(Path.home() / "Desktop" / base_name)
         out_path, _ = QFileDialog.getSaveFileName(self, "Grafikon mentése", desktop, "PNG files (*.png)")
         if not out_path:
@@ -709,3 +762,35 @@ class AudioAnalysisDialog(QDialog):
             QMessageBox.information(self, "Mentés kész", f"Grafikon mentve (3508×2481 px):\n{out_path}")
         else:
             QMessageBox.critical(self, "Mentési hiba", "Nem sikerült a fájl mentése.")
+
+    def _create_updatable_group(
+        self, title: str, items: dict[str, str]
+    ) -> tuple[QGroupBox, dict[str, QLabel]]:
+        group = QGroupBox(title)
+        form = QFormLayout(group)
+        form.setLabelAlignment(Qt.AlignLeft)
+        value_labels: dict[str, QLabel] = {}
+        for key, value in items.items():
+            k = QLabel(f"{key}:")
+            k.setStyleSheet("font-size: 11pt;")
+            v = QLabel(str(value))
+            v.setStyleSheet("font-size: 11pt; font-weight: 600;")
+            form.addRow(k, v)
+            value_labels[key] = v
+        return group, value_labels
+
+    def _switch_track(self, idx: int) -> None:
+        if idx < 0 or idx >= len(self._results):
+            return
+        self._current_track_idx = idx
+        result = self._results[idx]
+        for key, attr in self._loudness_keys:
+            lbl = self._loudness_value_labels.get(key)
+            if lbl is not None:
+                lbl.setText(getattr(result, attr))
+        if self._graph_widget is not None and self._graph_layout is not None:
+            old = self._graph_widget
+            self._graph_widget = LoudnessGraphWidget(result, parent=self._graph_container)
+            self._graph_layout.replaceWidget(old, self._graph_widget)
+            old.deleteLater()
+            self._graph_widget.update()

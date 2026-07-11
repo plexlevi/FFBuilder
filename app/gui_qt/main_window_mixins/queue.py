@@ -47,6 +47,9 @@ class QueueFlowMixin:
         self._queue_clear_button = self._w(QPushButton, "queueClearButton")
         self._queue_clear_button.clicked.connect(self._remove_selected_queue_item)
 
+        self._queue_clear_done_button = self._w(QPushButton, "queueClearDoneButton")
+        self._queue_clear_done_button.clicked.connect(self._remove_done_queue_items)
+
         self._queue_start_button = self._w(QPushButton, "queueStartButton")
         self._queue_start_button.clicked.connect(self._start_queue)
 
@@ -201,6 +204,9 @@ class QueueFlowMixin:
             }
             can_delete = has_selection and (active_id not in selected_ids)
             self._queue_clear_button.setEnabled(can_delete)
+        if self._queue_clear_done_button is not None:
+            has_done = any(item.status == "Done" for item in self._queue_items)
+            self._queue_clear_done_button.setEnabled(has_done)
 
     def _refresh_queue_view(self) -> None:
         if self._queue_tree_widget is None:
@@ -444,6 +450,12 @@ class QueueFlowMixin:
         self._save_queue_state()
         self._refresh_queue_view()
         self._set_status(trs("Output path updated ({var} items)").replace("{var}", str(len(selected_ids)), 1), 2500)
+
+    def _remove_done_queue_items(self) -> None:
+        self._queue_items = [item for item in self._queue_items if item.status != "Done"]
+        self._save_queue_state()
+        self._refresh_queue_view()
+        self._refresh_queue_controls()
 
     def _remove_selected_queue_item(self) -> None:
         if self._queue_tree_widget is None:

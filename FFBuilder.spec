@@ -32,7 +32,7 @@ exe = EXE(
     target_arch='arm64',
     codesign_identity=None,
     entitlements_file=None,
-    icon=['/Users/levi/Desktop/converter/assets/icons/app.icns'],
+    icon=['/Users/levi/Documents/LEVI/converter/assets/icons/app.icns'],
 )
 coll = COLLECT(
     exe,
@@ -46,6 +46,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='FFBuilder.app',
-    icon='/Users/levi/Desktop/converter/assets/icons/app.icns',
+    icon='/Users/levi/Documents/LEVI/converter/assets/icons/app.icns',
     bundle_identifier=None,
 )
