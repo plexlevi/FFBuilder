@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 from pathlib import Path
 
 _log = logging.getLogger(__name__)
@@ -12,7 +11,7 @@ from PySide6.QtCore import QEvent, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QColor, QIcon, QPalette
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from app.gui_qt.main_window_parts import _UpdateCheckWorker, _UpdateInstallWorker
+from app.gui_qt.main_window_parts import _UpdateCheckWorker
 from app.services.ffmpeg.manager import find_binaries
 from app.shared import settings as settings_manager
 from app.shared.utils.theme import get_accent, init_accent, invalidate_cache, is_dark_mode
@@ -105,13 +104,11 @@ class ShellMixin:
             return
 
         html_url = str(payload.get("html_url", "")).strip() or GITHUB_RELEASES_URL
-        dmg_url = str(payload.get("dmg_asset_url", "")).strip()
-        dmg_name = str(payload.get("dmg_asset_name", "")).strip()
 
-        _log.debug("[UpdateCheck] Scheduling update dialog (latest=%s dmg_url=%s)", latest_version, dmg_url or "<none>")
-        QTimer.singleShot(0, lambda: self._show_update_dialog(latest_version, html_url, dmg_url, dmg_name))
+        _log.debug("[UpdateCheck] Scheduling update dialog (latest=%s)", latest_version)
+        QTimer.singleShot(0, lambda: self._show_update_dialog(latest_version, html_url))
 
-    def _show_update_dialog(self, latest_version: str, html_url: str, dmg_url: str, dmg_name: str) -> None:
+    def _show_update_dialog(self, latest_version: str, html_url: str) -> None:
         try:
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Icon.Information)
@@ -121,46 +118,44 @@ class ShellMixin:
             text = (
                 f"<b>Új verzió érhető el: v{latest_version}</b><br>"
                 f"Jelenlegi verzió: v{APP_VERSION}<br><br>"
-                f"<a href=\"{html_url}\">Megnyitás GitHubon</a><br><br>"
+                f'<a href="{html_url}">Megnyitás GitHubon</a><br><br>'
                 "Mit szeretnél tenni?"
             )
             msg.setText(text)
 
-            install_btn = None
-            if dmg_url and sys.platform == "darwin":
-                install_btn = msg.addButton("Automatikus telepítés", QMessageBox.ButtonRole.AcceptRole)
-                try:
-                    _ah, _ar, _ag, _ab = get_accent()
-                    _accent = QColor(_ah)
-                    _darker = _accent.darker(120)
-                    _lighter = _accent.lighter(115)
-                    install_btn.setStyleSheet(
-                        "QPushButton {"
-                        f" background-color: {_accent.name()};"
-                        " color: #ffffff;"
-                        f" border: 1px solid {_darker.name()};"
-                        " border-radius: 6px;"
-                        " font-weight: 600;"
-                        " padding: 6px 12px;"
-                        "}"
-                        f"QPushButton:hover {{ background-color: {_lighter.name()}; }}"
-                        f"QPushButton:pressed {{ background-color: {_darker.name()}; }}"
-                    )
-                except Exception:
-                    _log.exception("[UpdateCheck] Failed to style install button")
+            download_btn = msg.addButton("Letöltés", QMessageBox.ButtonRole.AcceptRole)
+            try:
+                _ah, _ar, _ag, _ab = get_accent()
+                _accent = QColor(_ah)
+                _darker = _accent.darker(120)
+                _lighter = _accent.lighter(115)
+                download_btn.setStyleSheet(
+                    "QPushButton {"
+                    f" background-color: {_accent.name()};"
+                    " color: #ffffff;"
+                    f" border: 1px solid {_darker.name()};"
+                    " border-radius: 6px;"
+                    " font-weight: 600;"
+                    " padding: 6px 12px;"
+                    "}"
+                    f"QPushButton:hover {{ background-color: {_lighter.name()}; }}"
+                    f"QPushButton:pressed {{ background-color: {_darker.name()}; }}"
+                )
+            except Exception:
+                _log.exception("[UpdateCheck] Failed to style download button")
 
             later_btn = msg.addButton("Később", QMessageBox.ButtonRole.RejectRole)
             skip_btn = msg.addButton("Verzió kihagyása", QMessageBox.ButtonRole.DestructiveRole)
-            msg.setDefaultButton(install_btn or later_btn)
+            msg.setDefaultButton(download_btn)
             self.raise_()
             self.activateWindow()
             _log.debug("[UpdateCheck] Showing update dialog")
             msg.exec()
 
             clicked = msg.clickedButton()
-            if install_btn is not None and clicked is install_btn:
+            if clicked is download_btn:
                 settings_manager.save_settings({"skip_update_version": ""})
-                self._start_update_install(dmg_url, dmg_name)
+                QDesktopServices.openUrl(QUrl(html_url))
                 return
             if clicked is skip_btn:
                 settings_manager.save_settings({"skip_update_version": latest_version})
@@ -170,41 +165,6 @@ class ShellMixin:
                 self._set_status(f"ℹ️ Új verzió: v{latest_version}", 3500)
         except Exception:
             _log.exception("[UpdateCheck] Exception in _show_update_dialog")
-
-    def _start_update_install(self, dmg_url: str, dmg_name: str) -> None:
-        if self._update_install_in_progress:
-            return
-        self._update_install_in_progress = True
-        self._set_status("⬇️ Frissítés letöltése és telepítése...", 0)
-        worker = _UpdateInstallWorker(dmg_url, dmg_name)
-        worker.signals.finished.connect(self._on_update_install_finished)
-        self._update_install_worker = worker
-        self._thread_pool.start(worker)
-
-    def _on_update_install_finished(self, result: dict) -> None:
-        self._update_install_in_progress = False
-        self._update_install_worker = None  # Release before blocking calls
-        if not result.get("ok"):
-            err = str(result.get("error", "Ismeretlen hiba"))
-            self._set_status("❌ Frissítés telepítése sikertelen", 5000)
-            QMessageBox.warning(self, "Frissítés hiba", err)
-            return
-
-        app_path = str(result.get("app_path", "")).strip()
-        self._set_status("✅ Frissítés telepítve", 6000)
-        answer = QMessageBox.question(
-            self,
-            "Frissítés telepítve",
-            "A frissítés telepítve lett. Szeretnéd most újraindítani az alkalmazást?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes,
-        )
-        if answer != QMessageBox.StandardButton.Yes:
-            return
-
-        if app_path:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(app_path))
-        QApplication.instance().quit()
 
     def refresh_binary_paths(self, ffmpeg: str | None = None, ffprobe: str | None = None) -> None:
         """Refresh cached ffmpeg/ffprobe paths after runtime install changes."""

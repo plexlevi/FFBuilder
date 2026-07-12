@@ -61,7 +61,6 @@ from .workers import (
     _LoudnessWorker,
     _MetadataWorker,
     _UpdateCheckWorker,
-    _UpdateInstallWorker,
 )
 
 __all__ = [
@@ -73,7 +72,6 @@ __all__ = [
     "_MetadataWorker",
     "_install_splitter_dots",
     "_UpdateCheckWorker",
-    "_UpdateInstallWorker",
     "apply_finish_result_to_progress_bar",
     "apply_invalid_queue_item_state",
     "apply_queue_item_finish_state",

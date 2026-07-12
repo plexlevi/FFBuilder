@@ -12,7 +12,6 @@ _log = logging.getLogger(__name__)
 from app.services.media.file_info_service import extract_info
 from app.services.media.hardware_detector import HardwareDetector
 from app.services.update.checker import fetch_latest_release, is_newer_version
-from app.services.update.installer import download_and_install_release
 
 
 class _LoudnessWorkerSignals(QObject):
@@ -136,20 +135,3 @@ class _UpdateCheckWorker(QRunnable):
         except Exception as exc:
             _log.exception("[UpdateCheck] Unhandled exception in worker – signal will still fire")
             self.signals.finished.emit({"ok": False, "error": f"Unhandled exception: {exc}"})
-
-
-class _UpdateInstallWorkerSignals(QObject):
-    finished = Signal(dict)
-
-
-class _UpdateInstallWorker(QRunnable):
-    def __init__(self, dmg_url: str, dmg_name: str) -> None:
-        super().__init__()
-        self.setAutoDelete(False)  # Prevent Qt from deleting the C++ object before Python GC
-        self._dmg_url = dmg_url
-        self._dmg_name = dmg_name
-        self.signals = _UpdateInstallWorkerSignals()
-
-    def run(self) -> None:
-        result = download_and_install_release(self._dmg_url, self._dmg_name)
-        self.signals.finished.emit(result)
