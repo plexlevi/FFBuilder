@@ -1,0 +1,8 @@
+{
+  "name": "ProTools",
+  "desc": "libx264 production standard settings 15M bitrate",
+  "cmd": "ffmpeg -hwaccel videotoolbox -i {input} -c:v libx264 -preset medium -profile:v high -b:v 15M -x264opts \"keyint=12:min-keyint=1:ref=1:bframes=0:qcomp=0.8:aq-strength=0.5:dct-decimate=0:fast-pskip=0:deblock=-2,-2\" -vf \"scale=iw*720/ih:720\" -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 -colorspace bt709 -c:a aac -b:a 320k -ar 48000 {output}.mov",
+  "output_suffix": "_pt",
+  "output_extension": "mp4",
+  "order": 7
+}

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VisualEditorContent</class>
+ <widget class="QWidget" name="VisualEditorContent">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>780</width>
+    <height>660</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget { background: #2b2b2b; color: #e0e0e0; }
+QPushButton { background: #3c3c3c; color: #e0e0e0; border: 1px solid #555555; padding: 4px 8px; }
+QPushButton:hover { background: #4a4a4a; }
+QLineEdit, QPlainTextEdit, QComboBox { background: #3c3c3c; color: #e0e0e0; border: 1px solid #555555; }
+QGroupBox { color: #e0e0e0; border: 1px solid #555555; margin-top: 6px; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px; }
+QCheckBox, QLabel { color: #e0e0e0; }
+QScrollArea { background: #2b2b2b; border: none; }</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>10</number>
+   </property>
+   <property name="topMargin">
+    <number>10</number>
+   </property>
+   <property name="rightMargin">
+    <number>10</number>
+   </property>
+   <property name="bottomMargin">
+    <number>10</number>
+   </property>
+   <property name="spacing">
+    <number>6</number>
+   </property>
+   <item>
+    <widget class="QScrollArea" name="paramsScrollArea">
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="paramsContainer">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>758</width>
+        <height>500</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="paramsContainerLayout">
+       <property name="leftMargin">
+        <number>4</number>
+       </property>
+       <property name="topMargin">
+        <number>4</number>
+       </property>
+       <property name="rightMargin">
+        <number>4</number>
+       </property>
+       <property name="bottomMargin">
+        <number>4</number>
+       </property>
+       <property name="spacing">
+        <number>4</number>
+       </property>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="previewLabel">
+     <property name="text">
+      <string>Preview:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="previewTextEdit">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>72</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <family>Menlo</family>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Ok|QDialogButtonBox::Cancel</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

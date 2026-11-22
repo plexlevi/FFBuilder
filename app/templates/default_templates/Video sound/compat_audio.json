@@ -1,0 +1,8 @@
+{
+  "name": "Apple / Chromecast compatible audio",
+  "desc": "Makes audio and subtitles compatible with Apple/Chromecast.\nSurround: stereo AAC (aac_at on macOS) + AC3 surround.\nSubtitles: mov_text with per-track language metadata.",
+  "cmd": "ffmpeg -y -i {input} -map 0:v -c:v copy {compat_audio} {compat_subs} -map_chapters -1 -movflags +faststart {output}",
+  "output_suffix": "_compat",
+  "output_extension": "mp4",
+  "order": 10
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Wav",
+  "desc": "",
+  "cmd": "ffmpeg -y -i {input} -c:a pcm_s24le -ar 48000 -rf64 auto {output}.mp4",
+  "output_suffix": "",
+  "output_extension": "wav",
+  "order": 0
+}

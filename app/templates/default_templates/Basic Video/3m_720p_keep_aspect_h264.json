@@ -1,0 +1,8 @@
+{
+  "name": "3M 720p keep aspect H264",
+  "desc": "Keeps the aspect ratio",
+  "cmd": "ffmpeg -y -hwaccel videotoolbox -i {input} -c:v h264_videotoolbox -b:v 3M -vf \"scale=-1:720\" -preset fast -profile:v high -pix_fmt yuv420p -g 12 -c:a aac -b:a 192k -ar 48000 {output}",
+  "output_suffix": "_720p",
+  "output_extension": "mp4",
+  "order": 4
+}

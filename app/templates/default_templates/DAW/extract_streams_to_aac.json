@@ -1,0 +1,8 @@
+{
+  "name": "Convert audio to AAC (keep video)",
+  "desc": "Converts all audio streams to AAC while preserving channel layouts. Video is copied unchanged.",
+  "cmd": "ffmpeg -y -i {input} -map 0:v -c:v copy {recode_audio: -c:a aac -b:a 256k -ar 48000} {output}",
+  "output_suffix": "_aac",
+  "output_extension": "mkv",
+  "order": 9
+}

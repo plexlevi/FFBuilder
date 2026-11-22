@@ -1,0 +1,8 @@
+{
+  "name": "Mp3",
+  "desc": "256k mp3",
+  "cmd": "ffmpeg -hwaccel videotoolbox -i {input} -vn -c:a libmp3lame -b:a 256k -ar 44100 {output}",
+  "output_suffix": "",
+  "output_extension": "mp3",
+  "order": 1
+}

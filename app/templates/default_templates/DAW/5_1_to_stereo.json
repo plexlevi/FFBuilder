@@ -1,0 +1,8 @@
+{
+  "name": "5.1 to Stereo",
+  "desc": "Downmixes 5.1 audio to Stereo 48/24 PCM with ITU standards",
+  "cmd": "ffmpeg -hwaccel auto -i {input} -c:a pcm_s24le -ar 48000 -ac 2 -rf64 auto {output}",
+  "output_suffix": "_stereo",
+  "output_extension": "wav",
+  "order": 9
+}

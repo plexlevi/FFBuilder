@@ -1,0 +1,8 @@
+{
+  "name": "MP4 Medium",
+  "desc": "Min 4M/s stereo MP4, -18dB LUFS aac",
+  "cmd": "ffmpeg -hwaccel videotoolbox -i {input} -c:v h264_videotoolbox -crf 23 -preset medium -pix_fmt yuv420p -profile:v high -g 12 -aspect 16:9 -level 4.1 -minrate 4M -c:a aac -b:a 256k -ar 48000 -ac 2 -af loudnorm=I=-18:TP=-1.5:LRA=11 -movflags +faststart {output}.mp4",
+  "output_suffix": "_conv",
+  "output_extension": "mp4",
+  "order": 2
+}

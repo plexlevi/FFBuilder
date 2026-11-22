@@ -1,0 +1,8 @@
+{
+  "name": "HDR Mov",
+  "desc": "Reencode HDR videos to be compatible with Mac",
+  "cmd": "ffmpeg -hwaccel auto -y -i {input} -c:v hevc_videotoolbox -profile:v main10 -pix_fmt p010le -b:v 10M -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc -color_range tv  -metadata:s:v:0 master-display=\"G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)\" -movflags +faststart -tag:v hvc1 -c:a eac3 -b:a 640k -af \"channelmap=channel_layout=5.1\" -sn {output}",
+  "output_suffix": "",
+  "output_extension": "mov",
+  "order": 5
+}

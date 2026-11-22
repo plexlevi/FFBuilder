@@ -1,0 +1,8 @@
+{
+  "name": "Estract Stereo Wav",
+  "desc": "",
+  "cmd": "ffmpeg -y -i {input} -vn -c:a pcm_s24le -ar 48000 -ac 2 {output}.mp4",
+  "output_suffix": "",
+  "output_extension": "wav",
+  "order": 10
+}
