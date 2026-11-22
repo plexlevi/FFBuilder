@@ -96,6 +96,9 @@ class UiWiringMixin:
         self._ui.outputGroupBox.setSizePolicy(
             QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
+        self._ui.gridLayout.setColumnStretch(1, 1)
+        self._ui.outputFormatComboBox.setMinimumWidth(110)
+        self._ui.formatDescriptionLabel.setMinimumWidth(150)
         self._ui.verticalLayout_8.addWidget(self._ui.outputGroupBox)
 
         self.builder_tabs.insertTab(0, self.conversion_tab, trs("Conversion"))

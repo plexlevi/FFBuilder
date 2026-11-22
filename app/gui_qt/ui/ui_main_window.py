@@ -253,7 +253,6 @@ class Ui_MainWindow(object):
         self.outputFileLabel.setGeometry(QRect(0, 0, 120, 24))
 
         self.gridLayout.addWidget(self.outputFileLabelContainer, 0, 0, 1, 1)
-
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.outputPathLineEdit = QLineEdit(self.outputGroupBox)
@@ -269,7 +268,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.browseOutputButton)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout, 0, 1, 1, 2)
+        self.gridLayout.addLayout(self.horizontalLayout, 0, 1, 1, 1)
 
         self.formatLabelContainer = QWidget(self.outputGroupBox)
         self.formatLabelContainer.setObjectName(u"formatLabelContainer")
@@ -278,17 +277,18 @@ class Ui_MainWindow(object):
         self.formatLabel.setObjectName(u"formatLabel")
         self.formatLabel.setGeometry(QRect(0, 0, 120, 24))
 
-        self.gridLayout.addWidget(self.formatLabelContainer, 1, 0, 1, 1)
+        self.gridLayout.addWidget(self.formatLabelContainer, 0, 2, 1, 1)
 
         self.outputFormatComboBox = QComboBox(self.outputGroupBox)
         self.outputFormatComboBox.setObjectName(u"outputFormatComboBox")
 
-        self.gridLayout.addWidget(self.outputFormatComboBox, 1, 1, 1, 1)
+        self.gridLayout.addWidget(self.outputFormatComboBox, 0, 3, 1, 1)
 
         self.formatDescriptionLabel = QLabel(self.outputGroupBox)
         self.formatDescriptionLabel.setObjectName(u"formatDescriptionLabel")
+        self.formatDescriptionLabel.setWordWrap(True)
 
-        self.gridLayout.addWidget(self.formatDescriptionLabel, 1, 2, 1, 1)
+        self.gridLayout.addWidget(self.formatDescriptionLabel, 0, 4, 1, 1)
 
 
         self.verticalLayout_5.addWidget(self.outputGroupBox)
