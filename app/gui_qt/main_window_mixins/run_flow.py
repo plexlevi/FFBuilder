@@ -301,6 +301,7 @@ class RunFlowMixin:
 
         self._active_preset = tmpl
         self._command_manual = False
+        self._update_preset_button_text()
 
         tmpl_ext = template_output_extension(tmpl)
         if tmpl_ext:
@@ -351,7 +352,8 @@ class RunFlowMixin:
         dlg.exec()
         self._apply_saved_layout()
         if dlg.reset_layout_requested:
-            self.conversion_splitter.setSizes([480, 420])
+            if self.conversion_splitter.count() >= 2:
+                self.conversion_splitter.setSizes([480, 420])
             self.main_v_splitter.setSizes([560, 260])
             self.files_meta_splitter.setSizes([200, 320])
             self.templates_details_splitter.setSizes([300, 260])

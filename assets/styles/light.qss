@@ -84,3 +84,8 @@ QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
     background: rgba(80, 80, 80, 0.50);
 }
 
+
+/* Alternating metadata/log rows: keep them light-theme friendly. */
+QTreeWidget {
+    alternate-background-color: #f5f5f5;
+}

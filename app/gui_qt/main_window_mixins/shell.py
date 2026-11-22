@@ -288,7 +288,8 @@ class ShellMixin:
         if self.main_h_splitter.count() >= 2:
             self.main_h_splitter.setSizes(h_sizes)
         self.main_v_splitter.setSizes(v_sizes)
-        self.conversion_splitter.setSizes(cv_sizes)
+        if self.conversion_splitter.count() >= 2:
+            self.conversion_splitter.setSizes(cv_sizes)
         self.files_meta_splitter.setSizes(fm_sizes)
         self.templates_details_splitter.setSizes(td_sizes)
 
@@ -305,10 +306,11 @@ class ShellMixin:
         data = {
             "window_size": f"{self.width()}x{self.height()}",
             "splitter_main_vertical": ",".join(str(v) for v in v_sizes[:2]),
-            "splitter_conversion": ",".join(str(v) for v in cv_sizes[:2]),
             "splitter_files_metadata": ",".join(str(v) for v in fm_sizes[:2]),
             "splitter_templates_details": ",".join(str(v) for v in td_sizes[:2]),
         }
         if self.main_h_splitter.count() >= 2:
             data["splitter_main_horizontal"] = ",".join(str(v) for v in h_sizes[:2])
+        if self.conversion_splitter.count() >= 2:
+            data["splitter_conversion"] = ",".join(str(v) for v in cv_sizes[:2])
         settings_manager.save_settings(data)

@@ -9,18 +9,19 @@ from PySide6.QtWidgets import (
     QAbstractScrollArea,
     QComboBox,
     QDialog,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
+    QMenu,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QTabWidget,
+    QToolButton,
     QTreeWidget,
-    QVBoxLayout,
     QWidget,
 )
 
@@ -57,7 +58,7 @@ class UiWiringMixin:
         return widget
 
     def _build_conversion_tab(self) -> None:
-        """Create the first tab: files/metadata + compact preset selector + output."""
+        """Create the first tab: files/metadata with a preset menu in the header."""
         self.conversion_tab = QWidget()
         self.conversion_tab.setObjectName("conversionTab")
         conversion_layout = QHBoxLayout(self.conversion_tab)
@@ -68,52 +69,37 @@ class UiWiringMixin:
         self.conversion_splitter.setObjectName("conversionSplitter")
         conversion_layout.addWidget(self.conversion_splitter)
 
-        # Move the existing file + metadata pane into the conversion tab.
+        # The file + metadata pane now uses the full width of the tab.
         self._ui.leftPaneWidget.setParent(self.conversion_tab)
         self.conversion_splitter.addWidget(self._ui.leftPaneWidget)
 
-        right_panel = QWidget(self.conversion_splitter)
-        right_panel.setObjectName("conversionRightPanel")
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.setContentsMargins(8, 0, 0, 0)
-        right_layout.setSpacing(8)
-
-        preset_group = QGroupBox(trs("Preset"), right_panel)
-        preset_layout = QVBoxLayout(preset_group)
-        preset_row = QHBoxLayout()
-        self.preset_combo = QComboBox(preset_group)
-        self.preset_combo.setObjectName("presetComboBox")
-        self.preset_combo.setMinimumContentsLength(18)
-        self.preset_combo.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        # Compact hierarchical preset menu in the file header row.
+        self.preset_button = QToolButton(self._ui.leftPaneWidget)
+        self.preset_button.setObjectName("presetButton")
+        self.preset_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.preset_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self.preset_button.setMinimumWidth(180)
+        self.preset_button.setMaximumWidth(320)
+        self.preset_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
-        self.preset_combo.view().setMinimumWidth(420)
-        self.load_preset_button = QPushButton(trs("Load preset"), preset_group)
-        self.load_preset_button.setObjectName("loadPresetButton")
-        preset_row.addWidget(self.preset_combo, 1)
-        preset_row.addWidget(self.load_preset_button)
-        preset_layout.addLayout(preset_row)
+        self.preset_button.setText(trs("Preset"))
+        self.preset_button.setToolTip(trs("Choose a preset"))
+        self.preset_menu = QMenu(self.preset_button)
+        self.preset_menu.triggered.connect(self._on_preset_menu_triggered)
+        self.preset_button.setMenu(self.preset_menu)
+        self._ui.filesHeaderLayout.insertWidget(2, self.preset_button)
 
-        self.conversion_preset_desc = QLabel("", preset_group)
-        self.conversion_preset_desc.setWordWrap(True)
-        preset_layout.addWidget(self.conversion_preset_desc)
-        right_layout.addWidget(preset_group)
-
-        # The output settings belong to the conversion workflow, not to template management.
+        # Output settings belong below the command preview.
         self._ui.verticalLayout_5.removeWidget(self._ui.outputGroupBox)
-        self._ui.outputGroupBox.setParent(right_panel)
-        right_layout.addWidget(self._ui.outputGroupBox)
-        right_layout.addStretch(1)
-
-        self.conversion_splitter.addWidget(right_panel)
-        self.conversion_splitter.setSizes([480, 420])
+        self._ui.outputGroupBox.setParent(self._ui.bottomPreviewWidget)
+        self._ui.outputGroupBox.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+        )
+        self._ui.verticalLayout_8.addWidget(self._ui.outputGroupBox)
 
         self.builder_tabs.insertTab(0, self.conversion_tab, trs("Conversion"))
         self.builder_tabs.setCurrentIndex(0)
-
-        self.preset_combo.currentIndexChanged.connect(self._on_preset_combo_changed)
-        self.preset_combo.activated.connect(lambda _idx: self._load_selected_preset())
-        self.load_preset_button.clicked.connect(self._load_selected_preset)
 
         # File metadata should be readable; the template list can be a bit smaller.
         template_font = QFont("Tuffy", 12)

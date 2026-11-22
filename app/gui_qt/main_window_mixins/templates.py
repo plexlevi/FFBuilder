@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFileDialog, QInputDialog, QMenu, QMessageBox
 
 from app.domain.ffmpeg_params import CONTAINER_FORMATS
@@ -39,7 +40,7 @@ class TemplateCategoryMixin:
             self.templates_list.clear()
             self._current_template_idx = None
             self._update_template_description("Válassz egy sablont.")
-            self._populate_preset_combo()
+            self._populate_preset_menu()
             return
 
         settings = settings_manager.get_settings()
@@ -70,7 +71,7 @@ class TemplateCategoryMixin:
             self.templates_list.setCurrentRow(0)
         if settings.get("auto_apply_last_preset", True):
             self._apply_template()
-        self._populate_preset_combo()
+        self._populate_preset_menu()
 
     def _reload_templates(self, select_cat: str | None = None, select_tmpl_row: int | None = None) -> None:
         """Lista újratöltése szerkesztés / törlés / áthelyezés után."""
@@ -87,7 +88,7 @@ class TemplateCategoryMixin:
             self.templates_list.clear()
             self._current_template_idx = None
             self._update_template_description("Válassz egy sablont.")
-            self._populate_preset_combo()
+            self._populate_preset_menu()
             return
 
         cat_row = 0
@@ -98,7 +99,7 @@ class TemplateCategoryMixin:
         if select_tmpl_row is not None and select_tmpl_row < self.templates_list.count():
             self.templates_list.setCurrentRow(select_tmpl_row)
 
-        self._populate_preset_combo()
+        self._populate_preset_menu()
 
     def _on_category_selected(self, row: int) -> None:
         cats = self._template_manager.categories()
@@ -134,49 +135,53 @@ class TemplateCategoryMixin:
         global_idx, template = cat_templates[local_row]
         self._current_template_idx = global_idx
         self._update_template_description(template.get("desc", ""))
-        self._sync_preset_combo_to_index(global_idx)
-        button = getattr(self, "load_preset_button", None)
-        if button is not None:
-            button.setEnabled(True)
 
     def _update_template_description(self, text: str) -> None:
         self.template_desc_label.setText(text)
-        compact = getattr(self, "conversion_preset_desc", None)
-        if compact is not None:
-            compact.setText(text)
 
-    def _populate_preset_combo(self) -> None:
-        combo = getattr(self, "preset_combo", None)
-        if combo is None:
+    def _populate_preset_menu(self) -> None:
+        menu = getattr(self, "preset_menu", None)
+        if menu is None:
             return
 
-        current = self._current_template_idx
-        combo.blockSignals(True)
-        combo.clear()
+        menu.clear()
         for category in self._template_manager.categories():
-            for global_idx, template in self._template_manager.templates_in_category(category):
-                combo.addItem(f"{category} — {template.get('name', '')}", global_idx)
-        if current is not None:
-            index = combo.findData(current)
-            if index >= 0:
-                combo.setCurrentIndex(index)
-        if combo.count() == 0:
-            combo.addItem(trs("No templates"), None)
-        combo.blockSignals(False)
+            cat_templates = self._template_manager.templates_in_category(category)
+            if not cat_templates:
+                continue
+            submenu = menu.addMenu(category)
+            for global_idx, template in cat_templates:
+                action = submenu.addAction(str(template.get("name", "")))
+                action.setData(global_idx)
 
-        button = getattr(self, "load_preset_button", None)
-        if button is not None:
-            button.setEnabled(current is not None)
+        if not menu.actions():
+            empty = menu.addAction(trs("No templates"))
+            empty.setEnabled(False)
+        self._update_preset_button_text()
 
-    def _sync_preset_combo_to_index(self, global_idx: int) -> None:
-        combo = getattr(self, "preset_combo", None)
-        if combo is None:
+    def _update_preset_button_text(self) -> None:
+        button = getattr(self, "preset_button", None)
+        if button is None:
             return
-        index = combo.findData(global_idx)
-        if index >= 0 and combo.currentIndex() != index:
-            combo.blockSignals(True)
-            combo.setCurrentIndex(index)
-            combo.blockSignals(False)
+        active = self._active_preset
+        name = str(active.get("name", "")) if active else trs("Preset")
+        elided = button.fontMetrics().elidedText(
+            name, Qt.TextElideMode.ElideMiddle, 280
+        )
+        button.setText(elided)
+        button.setToolTip(name if active else trs("Choose a preset"))
+
+    def _on_preset_menu_triggered(self, action) -> None:
+        global_idx = action.data()
+        if global_idx is None:
+            return
+        try:
+            global_idx = int(global_idx)
+        except (TypeError, ValueError):
+            return
+        self._current_template_idx = global_idx
+        self._sync_template_list_to_index(global_idx)
+        self._apply_template()
 
     def _sync_template_list_to_index(self, global_idx: int) -> None:
         templates = self._template_manager.templates
@@ -196,41 +201,6 @@ class TemplateCategoryMixin:
         )
         if local_row >= 0 and self.templates_list.currentRow() != local_row:
             self.templates_list.setCurrentRow(local_row)
-
-    def _on_preset_combo_changed(self, index: int) -> None:
-        combo = getattr(self, "preset_combo", None)
-        if combo is None or index < 0:
-            return
-        global_idx = combo.itemData(index)
-        if global_idx is None:
-            return
-        try:
-            global_idx = int(global_idx)
-        except (TypeError, ValueError):
-            return
-        self._current_template_idx = global_idx
-        templates = self._template_manager.templates
-        if 0 <= global_idx < len(templates):
-            self._update_template_description(templates[global_idx].get("desc", ""))
-        self._sync_template_list_to_index(global_idx)
-
-    def _load_selected_preset(self) -> None:
-        combo = getattr(self, "preset_combo", None)
-        if combo is None:
-            return
-        global_idx = combo.currentData()
-        if global_idx is None:
-            return
-        try:
-            global_idx = int(global_idx)
-        except (TypeError, ValueError):
-            return
-        self._current_template_idx = global_idx
-        self._apply_template()
-        self._set_status(
-            trs("Preset loaded: {var}").replace("{var}", combo.currentText(), 1),
-            2500,
-        )
 
     def _on_template_double_clicked(self, item) -> None:
         """Dupla klikk: a kijelölt preset betöltése a parancsmezőbe."""
@@ -416,6 +386,7 @@ class TemplateCategoryMixin:
         if active_deleted:
             self._active_preset = None
             self._command_manual = True
+            self._update_preset_button_text()
             self._update_command_mode_visual()
         last_used = (settings_manager.get_settings().get("last_used_preset_name", "") or "").strip()
         if last_used and last_used in names:
