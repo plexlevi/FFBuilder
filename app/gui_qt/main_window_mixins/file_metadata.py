@@ -166,7 +166,7 @@ class FileMetadataMixin:
         action = menu.exec(self.files_list_widget.mapToGlobal(pos))
         if action == queue_action:
             self._enqueue_current_file()
-            self.builder_tabs.setCurrentIndex(1)
+            self._show_queue_tab()
         elif action == audio_swap_action:
             self._open_audio_swap_dialog()
         elif action is not None and play_action is not None and action == play_action:

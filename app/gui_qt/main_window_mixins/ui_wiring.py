@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QAbstractScrollArea,
     QComboBox,
     QDialog,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -19,6 +20,8 @@ from PySide6.QtWidgets import (
     QSplitter,
     QTabWidget,
     QTreeWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from app.gui_qt.main_window_parts import _CategoryDropFilter, _install_splitter_dots
@@ -53,6 +56,73 @@ class UiWiringMixin:
             raise RuntimeError(f"Missing widget: {name}")
         return widget
 
+    def _build_conversion_tab(self) -> None:
+        """Create the first tab: files/metadata + compact preset selector + output."""
+        self.conversion_tab = QWidget()
+        self.conversion_tab.setObjectName("conversionTab")
+        conversion_layout = QHBoxLayout(self.conversion_tab)
+        conversion_layout.setContentsMargins(0, 0, 0, 0)
+        conversion_layout.setSpacing(0)
+
+        self.conversion_splitter = QSplitter(Qt.Orientation.Horizontal, self.conversion_tab)
+        self.conversion_splitter.setObjectName("conversionSplitter")
+        conversion_layout.addWidget(self.conversion_splitter)
+
+        # Move the existing file + metadata pane into the conversion tab.
+        self._ui.leftPaneWidget.setParent(self.conversion_tab)
+        self.conversion_splitter.addWidget(self._ui.leftPaneWidget)
+
+        right_panel = QWidget(self.conversion_splitter)
+        right_panel.setObjectName("conversionRightPanel")
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(8, 0, 0, 0)
+        right_layout.setSpacing(8)
+
+        preset_group = QGroupBox(trs("Preset"), right_panel)
+        preset_layout = QVBoxLayout(preset_group)
+        preset_row = QHBoxLayout()
+        self.preset_combo = QComboBox(preset_group)
+        self.preset_combo.setObjectName("presetComboBox")
+        self.preset_combo.setMinimumContentsLength(18)
+        self.preset_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.preset_combo.view().setMinimumWidth(420)
+        self.load_preset_button = QPushButton(trs("Load preset"), preset_group)
+        self.load_preset_button.setObjectName("loadPresetButton")
+        preset_row.addWidget(self.preset_combo, 1)
+        preset_row.addWidget(self.load_preset_button)
+        preset_layout.addLayout(preset_row)
+
+        self.conversion_preset_desc = QLabel("", preset_group)
+        self.conversion_preset_desc.setWordWrap(True)
+        preset_layout.addWidget(self.conversion_preset_desc)
+        right_layout.addWidget(preset_group)
+
+        # The output settings belong to the conversion workflow, not to template management.
+        self._ui.verticalLayout_5.removeWidget(self._ui.outputGroupBox)
+        self._ui.outputGroupBox.setParent(right_panel)
+        right_layout.addWidget(self._ui.outputGroupBox)
+        right_layout.addStretch(1)
+
+        self.conversion_splitter.addWidget(right_panel)
+        self.conversion_splitter.setSizes([480, 420])
+
+        self.builder_tabs.insertTab(0, self.conversion_tab, trs("Conversion"))
+        self.builder_tabs.setCurrentIndex(0)
+
+        self.preset_combo.currentIndexChanged.connect(self._on_preset_combo_changed)
+        self.preset_combo.activated.connect(lambda _idx: self._load_selected_preset())
+        self.load_preset_button.clicked.connect(self._load_selected_preset)
+
+        # File metadata should be readable; the template list can be a bit smaller.
+        template_font = QFont("Tuffy", 12)
+        self.categories_list.setFont(template_font)
+        self.templates_list.setFont(template_font)
+        self.files_list_widget.setFont(QFont("Tuffy", 12))
+        self.metadata_tree.setFont(QFont("Tuffy", 12))
+        self.files_meta_splitter.setSizes([200, 320])
+
     def _wire_widgets(self) -> None:
         self.hardware_status_label = self._w(QLabel, "hardwareStatusLabel")
         self.settings_button = self._w(QPushButton, "settingsButton")
@@ -81,10 +151,13 @@ class UiWiringMixin:
         self.categories_list = self._w(QListWidget, "categoriesListWidget")
         self.cat_template_splitter.setSizes([130, 220])
 
+        self._build_conversion_tab()
+
         self._splitter_dots: list = []
         for _spl in (
             self.main_h_splitter,
             self.main_v_splitter,
+            self.conversion_splitter,
             self.files_meta_splitter,
             self.templates_details_splitter,
             self.cat_template_splitter,
@@ -161,6 +234,7 @@ class UiWiringMixin:
 
         self.main_h_splitter.splitterMoved.connect(self._on_splitter_changed)
         self.main_v_splitter.splitterMoved.connect(self._on_splitter_changed)
+        self.conversion_splitter.splitterMoved.connect(self._on_splitter_changed)
         self.files_meta_splitter.splitterMoved.connect(self._on_splitter_changed)
         self.templates_details_splitter.splitterMoved.connect(self._on_splitter_changed)
 

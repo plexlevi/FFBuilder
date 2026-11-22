@@ -383,5 +383,10 @@
   "Command cleared": "Parancs törölve.",
   "Default state": "Alapállapot",
   "Restore the default command.": "Az alapértelmezett parancs visszaállítása.",
-  "Default state restored": "Alapállapot visszaállítva."
+  "Default state restored": "Alapállapot visszaállítva.",
+  "Conversion": "Konverzió",
+  "Preset": "Preset",
+  "Load preset": "Preset betöltése",
+  "No templates": "Nincsenek sablonok",
+  "Preset loaded: {var}": "Preset betöltve: {var}"
 }

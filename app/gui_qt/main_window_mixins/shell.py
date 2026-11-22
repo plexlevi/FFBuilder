@@ -282,10 +282,13 @@ class ShellMixin:
 
         h_sizes = _parse_sizes(settings.get("splitter_main_horizontal", "320,820"), [320, 820])
         v_sizes = _parse_sizes(settings.get("splitter_main_vertical", "560,260"), [560, 260])
+        cv_sizes = _parse_sizes(settings.get("splitter_conversion", "480,420"), [480, 420])
         fm_sizes = _parse_sizes(settings.get("splitter_files_metadata", "300,240"), [300, 240])
         td_sizes = _parse_sizes(settings.get("splitter_templates_details", "260,260"), [260, 260])
-        self.main_h_splitter.setSizes(h_sizes)
+        if self.main_h_splitter.count() >= 2:
+            self.main_h_splitter.setSizes(h_sizes)
         self.main_v_splitter.setSizes(v_sizes)
+        self.conversion_splitter.setSizes(cv_sizes)
         self.files_meta_splitter.setSizes(fm_sizes)
         self.templates_details_splitter.setSizes(td_sizes)
 
@@ -296,14 +299,16 @@ class ShellMixin:
 
         h_sizes = self.main_h_splitter.sizes()
         v_sizes = self.main_v_splitter.sizes()
+        cv_sizes = self.conversion_splitter.sizes()
         fm_sizes = self.files_meta_splitter.sizes()
         td_sizes = self.templates_details_splitter.sizes()
-        settings_manager.save_settings(
-            {
-                "window_size": f"{self.width()}x{self.height()}",
-                "splitter_main_horizontal": ",".join(str(v) for v in h_sizes[:2]),
-                "splitter_main_vertical": ",".join(str(v) for v in v_sizes[:2]),
-                "splitter_files_metadata": ",".join(str(v) for v in fm_sizes[:2]),
-                "splitter_templates_details": ",".join(str(v) for v in td_sizes[:2]),
-            }
-        )
+        data = {
+            "window_size": f"{self.width()}x{self.height()}",
+            "splitter_main_vertical": ",".join(str(v) for v in v_sizes[:2]),
+            "splitter_conversion": ",".join(str(v) for v in cv_sizes[:2]),
+            "splitter_files_metadata": ",".join(str(v) for v in fm_sizes[:2]),
+            "splitter_templates_details": ",".join(str(v) for v in td_sizes[:2]),
+        }
+        if self.main_h_splitter.count() >= 2:
+            data["splitter_main_horizontal"] = ",".join(str(v) for v in h_sizes[:2])
+        settings_manager.save_settings(data)

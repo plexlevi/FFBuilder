@@ -29,6 +29,7 @@ _DEFAULTS: dict = {
     "window_size": "961x766",
     "splitter_main_horizontal": "331,606",
     "splitter_main_vertical": "529,147",
+    "splitter_conversion": "480,420",
     "splitter_files_metadata": "133,349",
     "splitter_templates_details": "253,72",
     "auto_apply_last_preset": False,

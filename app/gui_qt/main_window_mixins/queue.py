@@ -248,6 +248,11 @@ class QueueFlowMixin:
 
         self._refresh_queue_controls()
 
+    def _show_queue_tab(self) -> None:
+        index = self.builder_tabs.indexOf(self._ui.queueTab)
+        if index >= 0:
+            self.builder_tabs.setCurrentIndex(index)
+
     def _enqueue_current_file(self) -> None:
         selected_rows = sorted(
             {self.files_list_widget.row(it) for it in self.files_list_widget.selectedItems()}
@@ -391,7 +396,7 @@ class QueueFlowMixin:
 
         self._save_queue_state()
         self._refresh_queue_view()
-        self.builder_tabs.setCurrentIndex(1)
+        self._show_queue_tab()
         self._set_status(
             trs("{var} audio swap jobs added to queue").replace("{var}", str(len(added)), 1),
             3000,

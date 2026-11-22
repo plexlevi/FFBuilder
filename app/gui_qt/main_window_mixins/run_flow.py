@@ -237,9 +237,6 @@ class RunFlowMixin:
         return text
 
     def _refresh_command(self) -> None:
-        if self.builder_tabs.currentIndex() != 0 and not self._command_manual:
-            return
-
         input_path = str(self.current_file_info.get("path", "") or "")
         output_path = self.output_path_line.text().strip()
 
@@ -352,12 +349,12 @@ class RunFlowMixin:
         dlg = SettingsDialog(parent=self)
         dlg.check_updates_requested.connect(self.check_for_updates_manual)
         dlg.exec()
-        if dlg.reset_layout_requested:
-            self.main_h_splitter.setSizes([320, 820])
-            self.main_v_splitter.setSizes([560, 260])
-            self.files_meta_splitter.setSizes([300, 240])
-            self.templates_details_splitter.setSizes([260, 260])
         self._apply_saved_layout()
+        if dlg.reset_layout_requested:
+            self.conversion_splitter.setSizes([480, 420])
+            self.main_v_splitter.setSizes([560, 260])
+            self.files_meta_splitter.setSizes([200, 320])
+            self.templates_details_splitter.setSizes([300, 260])
         self._refresh_output_path_from_input()
         self._refresh_command()
         self._refresh_queue_controls()
