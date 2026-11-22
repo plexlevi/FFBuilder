@@ -556,4 +556,7 @@ class RunFlowMixin:
     def _apply_console_visibility(self) -> None:
         if hasattr(self, "ffmpeg_console"):
             show = bool(settings_manager.get_settings().get("show_ffmpeg_console", False))
+            conversion_index = self.builder_tabs.indexOf(self.conversion_tab)
+            if conversion_index >= 0 and self.builder_tabs.currentIndex() != conversion_index:
+                show = False
             self.ffmpeg_console.setVisible(show)

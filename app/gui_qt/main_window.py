@@ -89,6 +89,7 @@ class MainWindow(
         self._layout_save_timer = QTimer()
         self._layout_save_timer.setSingleShot(True)
         self._layout_save_timer.timeout.connect(self._save_layout_settings)
+        self._bottom_preview_sizes: list[int] | None = None
         self._status_clear_timer = QTimer()
         self._status_clear_timer.setSingleShot(True)
         self._status_clear_timer.timeout.connect(self._on_status_clear_timer)

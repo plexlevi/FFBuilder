@@ -123,6 +123,31 @@ class UiWiringMixin:
         self.metadata_tree.setFont(QFont("Tuffy", 12))
         self.files_meta_splitter.setSizes([200, 320])
 
+    def _update_conversion_panel_visibility(self, index: int | None = None) -> None:
+        """Show the command preview/status bar only on the Conversion tab."""
+        if index is None:
+            index = self.builder_tabs.currentIndex()
+        conversion_index = self.builder_tabs.indexOf(self.conversion_tab)
+        is_conversion = index == conversion_index
+
+        preview = self._ui.bottomPreviewWidget
+        if is_conversion:
+            if not preview.isVisible():
+                preview.setVisible(True)
+                sizes = getattr(self, "_bottom_preview_sizes", None)
+                if sizes:
+                    self.main_v_splitter.setSizes(sizes)
+            self._ui.statusbar.setVisible(True)
+            self._apply_console_visibility()
+            return
+
+        if preview.isVisible():
+            self._bottom_preview_sizes = self.main_v_splitter.sizes()
+        preview.setVisible(False)
+        self._ui.statusbar.setVisible(False)
+        if hasattr(self, "ffmpeg_console"):
+            self.ffmpeg_console.setVisible(False)
+
     def _wire_widgets(self) -> None:
         self.hardware_status_label = self._w(QLabel, "hardwareStatusLabel")
         self.settings_button = self._w(QPushButton, "settingsButton")
@@ -222,6 +247,7 @@ class UiWiringMixin:
         self._ve_dialog: QDialog | None = None
 
         self.builder_tabs.currentChanged.connect(lambda _idx: self._refresh_command())
+        self.builder_tabs.currentChanged.connect(self._update_conversion_panel_visibility)
         self.templates_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.templates_list.customContextMenuRequested.connect(self._show_template_context_menu)
         self.templates_list.model().rowsMoved.connect(self._on_template_rows_moved)
@@ -260,3 +286,5 @@ class UiWiringMixin:
         self.ffmpeg_console.setFixedHeight(_lh * 3 + 12)
         _show = bool(settings_manager.get_settings().get("show_ffmpeg_console", False))
         self.ffmpeg_console.setVisible(_show)
+
+        self._update_conversion_panel_visibility()
