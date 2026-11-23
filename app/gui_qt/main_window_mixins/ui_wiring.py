@@ -63,8 +63,12 @@ class UiWiringMixin:
         self.conversion_tab = QWidget()
         self.conversion_tab.setObjectName("conversionTab")
         conversion_layout = QVBoxLayout(self.conversion_tab)
-        conversion_layout.setContentsMargins(0, 0, 0, 0)
-        conversion_layout.setSpacing(0)
+        # At least ~3 mm breathing room around the tab content.
+        content_margin = 10
+        conversion_layout.setContentsMargins(
+            content_margin, content_margin, content_margin, content_margin
+        )
+        conversion_layout.setSpacing(8)
 
         self.conversion_v_splitter = QSplitter(Qt.Orientation.Vertical, self.conversion_tab)
         self.conversion_v_splitter.setObjectName("conversionVerticalSplitter")
@@ -73,11 +77,19 @@ class UiWiringMixin:
         # Top: file + metadata pane.
         self._ui.leftPaneWidget.setParent(self.conversion_tab)
         self.conversion_v_splitter.addWidget(self._ui.leftPaneWidget)
+        left_layout = self._ui.leftPaneWidget.layout()
+        if left_layout is not None:
+            left_layout.setContentsMargins(0, 0, 0, 0)
+            left_layout.setSpacing(8)
 
         # Bottom: command preview, output settings and the run/status bar.
         # These are intentionally inside the tab so they share its frame.
         self._ui.bottomPreviewWidget.setParent(self.conversion_tab)
         self.conversion_v_splitter.addWidget(self._ui.bottomPreviewWidget)
+        bottom_layout = self._ui.bottomPreviewWidget.layout()
+        if bottom_layout is not None:
+            bottom_layout.setContentsMargins(0, 0, 0, 0)
+            bottom_layout.setSpacing(8)
         self.conversion_v_splitter.setSizes([420, 300])
 
         # Compact hierarchical preset menu in the file header row.
@@ -125,6 +137,10 @@ class UiWiringMixin:
 
         self._ui.statusbar.removeWidget(self._ui.statusBarContentWidget)
         self._ui.statusBarContentWidget.setParent(self._ui.bottomPreviewWidget)
+        status_layout = self._ui.statusBarContentWidget.layout()
+        if status_layout is not None:
+            status_layout.setContentsMargins(0, 0, 0, 0)
+            status_layout.setSpacing(8)
         self._ui.verticalLayout_8.addWidget(self._ui.statusBarContentWidget)
         self._ui.statusBarContentWidget.show()
         self._ui.statusbar.setVisible(False)
