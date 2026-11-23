@@ -152,6 +152,13 @@ class UiWiringMixin:
         self.builder_tabs.insertTab(0, self.conversion_tab, trs("Conversion"))
         self.builder_tabs.setCurrentIndex(0)
 
+        # Show the queue tab before the templates tab.
+        queue_index = self.builder_tabs.indexOf(self._ui.queueTab)
+        templates_index = self.builder_tabs.indexOf(self._ui.templatesTab)
+        if 0 <= templates_index < queue_index:
+            self.builder_tabs.removeTab(queue_index)
+            self.builder_tabs.insertTab(templates_index, self._ui.queueTab, trs("Queue"))
+
         # File metadata should be readable; the template list can be a bit smaller.
         template_font = QFont("Tuffy", 12)
         self.categories_list.setFont(template_font)
