@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QToolButton,
     QTreeWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -58,20 +59,26 @@ class UiWiringMixin:
         return widget
 
     def _build_conversion_tab(self) -> None:
-        """Create the first tab: files/metadata with a preset menu in the header."""
+        """Create the first tab with files, command preview and output inside it."""
         self.conversion_tab = QWidget()
         self.conversion_tab.setObjectName("conversionTab")
-        conversion_layout = QHBoxLayout(self.conversion_tab)
+        conversion_layout = QVBoxLayout(self.conversion_tab)
         conversion_layout.setContentsMargins(0, 0, 0, 0)
         conversion_layout.setSpacing(0)
 
-        self.conversion_splitter = QSplitter(Qt.Orientation.Horizontal, self.conversion_tab)
-        self.conversion_splitter.setObjectName("conversionSplitter")
-        conversion_layout.addWidget(self.conversion_splitter)
+        self.conversion_v_splitter = QSplitter(Qt.Orientation.Vertical, self.conversion_tab)
+        self.conversion_v_splitter.setObjectName("conversionVerticalSplitter")
+        conversion_layout.addWidget(self.conversion_v_splitter)
 
-        # The file + metadata pane now uses the full width of the tab.
+        # Top: file + metadata pane.
         self._ui.leftPaneWidget.setParent(self.conversion_tab)
-        self.conversion_splitter.addWidget(self._ui.leftPaneWidget)
+        self.conversion_v_splitter.addWidget(self._ui.leftPaneWidget)
+
+        # Bottom: command preview, output settings and the run/status bar.
+        # These are intentionally inside the tab so they share its frame.
+        self._ui.bottomPreviewWidget.setParent(self.conversion_tab)
+        self.conversion_v_splitter.addWidget(self._ui.bottomPreviewWidget)
+        self.conversion_v_splitter.setSizes([420, 300])
 
         # Compact hierarchical preset menu in the file header row.
         self.preset_button = QToolButton(self._ui.leftPaneWidget)
@@ -110,6 +117,18 @@ class UiWiringMixin:
         self._ui.outputFormatComboBox.setToolTip(trs("Format"))
         self._ui.verticalLayout_8.addWidget(self._ui.outputGroupBox)
 
+        # The run/status bar and the optional FFmpeg console also belong
+        # inside the Conversion tab frame.
+        self._ui.verticalLayout_2.removeWidget(self._ui.ffmpegConsoleTextEdit)
+        self._ui.ffmpegConsoleTextEdit.setParent(self._ui.bottomPreviewWidget)
+        self._ui.verticalLayout_8.addWidget(self._ui.ffmpegConsoleTextEdit)
+
+        self._ui.statusbar.removeWidget(self._ui.statusBarContentWidget)
+        self._ui.statusBarContentWidget.setParent(self._ui.bottomPreviewWidget)
+        self._ui.verticalLayout_8.addWidget(self._ui.statusBarContentWidget)
+        self._ui.statusBarContentWidget.show()
+        self._ui.statusbar.setVisible(False)
+
         self.builder_tabs.insertTab(0, self.conversion_tab, trs("Conversion"))
         self.builder_tabs.setCurrentIndex(0)
 
@@ -122,29 +141,8 @@ class UiWiringMixin:
         self.files_meta_splitter.setSizes([200, 320])
 
     def _update_conversion_panel_visibility(self, index: int | None = None) -> None:
-        """Show the command preview/status bar only on the Conversion tab."""
-        if index is None:
-            index = self.builder_tabs.currentIndex()
-        conversion_index = self.builder_tabs.indexOf(self.conversion_tab)
-        is_conversion = index == conversion_index
-
-        preview = self._ui.bottomPreviewWidget
-        if is_conversion:
-            if not preview.isVisible():
-                preview.setVisible(True)
-                sizes = getattr(self, "_bottom_preview_sizes", None)
-                if sizes:
-                    self.main_v_splitter.setSizes(sizes)
-            self._ui.statusbar.setVisible(True)
-            self._apply_console_visibility()
-            return
-
-        if preview.isVisible():
-            self._bottom_preview_sizes = self.main_v_splitter.sizes()
-        preview.setVisible(False)
-        self._ui.statusbar.setVisible(False)
-        if hasattr(self, "ffmpeg_console"):
-            self.ffmpeg_console.setVisible(False)
+        """Keep the optional console hidden outside the Conversion tab."""
+        self._apply_console_visibility()
 
     def _wire_widgets(self) -> None:
         self.hardware_status_label = self._w(QLabel, "hardwareStatusLabel")
@@ -180,7 +178,7 @@ class UiWiringMixin:
         for _spl in (
             self.main_h_splitter,
             self.main_v_splitter,
-            self.conversion_splitter,
+            self.conversion_v_splitter,
             self.files_meta_splitter,
             self.templates_details_splitter,
             self.cat_template_splitter,
@@ -269,7 +267,7 @@ class UiWiringMixin:
 
         self.main_h_splitter.splitterMoved.connect(self._on_splitter_changed)
         self.main_v_splitter.splitterMoved.connect(self._on_splitter_changed)
-        self.conversion_splitter.splitterMoved.connect(self._on_splitter_changed)
+        self.conversion_v_splitter.splitterMoved.connect(self._on_splitter_changed)
         self.files_meta_splitter.splitterMoved.connect(self._on_splitter_changed)
         self.templates_details_splitter.splitterMoved.connect(self._on_splitter_changed)
 

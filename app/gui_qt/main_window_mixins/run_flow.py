@@ -359,9 +359,8 @@ class RunFlowMixin:
         dlg.exec()
         self._apply_saved_layout()
         if dlg.reset_layout_requested:
-            if self.conversion_splitter.count() >= 2:
-                self.conversion_splitter.setSizes([480, 420])
-            self.main_v_splitter.setSizes([560, 260])
+            if self.conversion_v_splitter.count() >= 2:
+                self.conversion_v_splitter.setSizes([400, 300])
             self.files_meta_splitter.setSizes([200, 320])
             self.templates_details_splitter.setSizes([300, 260])
         self._refresh_output_path_from_input()
