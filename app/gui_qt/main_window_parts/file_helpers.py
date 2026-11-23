@@ -33,29 +33,50 @@ def default_file_info_save_path(input_path: str) -> str:
     return str(p.parent / f"{p.stem}_info.txt")
 
 
+def _iter_metadata_rows(
+    info: dict[str, Any],
+    meta_fields: list[tuple[str, str]],
+    loudness_keys: set[str],
+):
+    """Yield (label, value, is_audio) triples for the metadata table."""
+    is_loading = bool(info.get("__loading__"))
+    video_streams: list[str] = info.get("video_streams", [])
+    audio_streams_data: list[dict] = info.get("audio_streams_data", [])
+    for label, key in meta_fields:
+        value = str(info.get(key, "—"))
+        if is_loading and key in loudness_keys and value in {"—", "unknown", ""}:
+            value = trs("Analysis in progress...")
+        is_audio = key.startswith("audio") or key in loudness_keys
+        yield (trs(label), value, is_audio)
+        if key == "hdr" and len(video_streams) > 1:
+            for i, vs in enumerate(video_streams[1:], start=2):
+                yield (trs(f"Video {i}"), vs, False)
+        elif key == "loudness_gate" and len(audio_streams_data) > 1:
+            for n, stream_data in enumerate(audio_streams_data[1:], start=2):
+                for subfield_label, subfield_key in _AUDIO_SUBFIELDS:
+                    label_n = subfield_label.replace("Audio", f"Audio{n}", 1)
+                    yield (trs(label_n), str(stream_data.get(subfield_key, "unknown")), True)
+
+
 def build_metadata_rows(
     info: dict[str, Any],
     meta_fields: list[tuple[str, str]],
     loudness_keys: set[str],
 ) -> list[tuple[str, str]]:
-    is_loading = bool(info.get("__loading__"))
-    video_streams: list[str] = info.get("video_streams", [])
-    audio_streams_data: list[dict] = info.get("audio_streams_data", [])
-    rows: list[tuple[str, str]] = []
-    for label, key in meta_fields:
-        value = str(info.get(key, "—"))
-        if is_loading and key in loudness_keys and value in {"—", "unknown", ""}:
-            value = trs("Analysis in progress...")
-        rows.append((trs(label), value))
-        if key == "hdr" and len(video_streams) > 1:
-            for i, vs in enumerate(video_streams[1:], start=2):
-                rows.append((trs(f"Video {i}"), vs))
-        elif key == "loudness_gate" and len(audio_streams_data) > 1:
-            for n, stream_data in enumerate(audio_streams_data[1:], start=2):
-                for subfield_label, subfield_key in _AUDIO_SUBFIELDS:
-                    label_n = subfield_label.replace("Audio", f"Audio{n}", 1)
-                    rows.append((trs(label_n), str(stream_data.get(subfield_key, "unknown"))))
-    return rows
+    return [(label, value) for label, value, _ in _iter_metadata_rows(info, meta_fields, loudness_keys)]
+
+
+def build_metadata_columns(
+    info: dict[str, Any],
+    meta_fields: list[tuple[str, str]],
+    loudness_keys: set[str],
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """Split metadata rows into (video/other, audio) columns."""
+    video_rows: list[tuple[str, str]] = []
+    audio_rows: list[tuple[str, str]] = []
+    for label, value, is_audio in _iter_metadata_rows(info, meta_fields, loudness_keys):
+        (audio_rows if is_audio else video_rows).append((label, value))
+    return video_rows, audio_rows
 
 
 def format_file_info_text(info: dict[str, Any], meta_fields: list[tuple[str, str]], loudness_keys: set[str]) -> str:

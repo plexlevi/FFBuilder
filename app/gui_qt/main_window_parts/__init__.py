@@ -1,6 +1,7 @@
 """Composable helper modules for the Qt main window."""
 
 from .file_helpers import (
+    build_metadata_columns,
     build_metadata_rows,
     default_file_info_save_path,
     delete_files_by_rows,
@@ -80,6 +81,7 @@ __all__ = [
     "apply_queue_item_finish_state",
     "append_capped_text",
     "ask_ebu_conflict",
+    "build_metadata_columns",
     "build_metadata_rows",
     "build_run_status_text",
     "clear_status_display",

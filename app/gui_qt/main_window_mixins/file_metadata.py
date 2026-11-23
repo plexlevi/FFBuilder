@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 
 from app.shared.i18n import trs
 from app.gui_qt.main_window_parts import (
-    build_metadata_rows,
+    build_metadata_columns,
     default_file_info_save_path,
     delete_files_by_rows,
     resolve_audio_analysis_request,
@@ -314,23 +314,28 @@ class FileMetadataMixin:
         self._refresh_queue_controls()
 
     def _render_metadata(self, info: dict) -> None:
-        rows = build_metadata_rows(info, _META_FIELDS, _LOUDNESS_KEYS)
+        video_rows, audio_rows = build_metadata_columns(info, _META_FIELDS, _LOUDNESS_KEYS)
         self.metadata_tree.clear()
 
-        # Two field/value pairs per row so more data fits without scrolling.
-        pair_count = (len(rows) + 1) // 2
-        left = rows[:pair_count]
-        right = rows[pair_count:]
-        for idx in range(pair_count):
-            left_pair = left[idx]
-            right_pair = right[idx] if idx < len(right) else ("", "")
+        # Left column: video/other data, right column: audio data.
+        row_count = max(len(video_rows), len(audio_rows))
+        for idx in range(row_count):
+            video_pair = video_rows[idx] if idx < len(video_rows) else ("", "")
+            audio_pair = audio_rows[idx] if idx < len(audio_rows) else ("", "")
             item = QTreeWidgetItem(
-                [left_pair[0], left_pair[1], right_pair[0], right_pair[1]]
+                [video_pair[0], video_pair[1], audio_pair[0], audio_pair[1]]
             )
             self.metadata_tree.addTopLevelItem(item)
 
+        # Keep both halves at the same width: the field columns get a common
+        # width, the value columns share the rest equally.
         header = self.metadata_tree.header()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.metadata_tree.resizeColumnToContents(0)
+        self.metadata_tree.resizeColumnToContents(2)
+        field_width = max(
+            self.metadata_tree.columnWidth(0), self.metadata_tree.columnWidth(2)
+        )
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
+        self.metadata_tree.setColumnWidth(0, field_width)
+        self.metadata_tree.setColumnWidth(2, field_width)

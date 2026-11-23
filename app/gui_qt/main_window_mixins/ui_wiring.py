@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QFrame,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -177,6 +178,12 @@ class UiWiringMixin:
         self.metadata_tree.setHeaderLabels(
             [trs("Field"), trs("Value"), trs("Field"), trs("Value")]
         )
+        header = self.metadata_tree.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self._ui.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.files_status_label = self._w(QLabel, "statusFilesLabel")
         self.loudness_progress_bar = self._w(QProgressBar, "statusEbuProgressBar")
