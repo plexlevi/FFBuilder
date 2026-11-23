@@ -88,7 +88,10 @@ class UiWiringMixin:
         self.preset_menu = QMenu(self.preset_button)
         self.preset_menu.triggered.connect(self._on_preset_menu_triggered)
         self.preset_button.setMenu(self.preset_menu)
-        self._ui.filesHeaderLayout.insertWidget(2, self.preset_button)
+        self.presets_label = QLabel(trs("Presets"), self._ui.leftPaneWidget)
+        self.presets_label.setProperty("_i18n_text", "Presets")
+        self._ui.filesHeaderLayout.addWidget(self.presets_label)
+        self._ui.filesHeaderLayout.addWidget(self.preset_button)
 
         # Output settings belong below the command preview.
         self._ui.verticalLayout_5.removeWidget(self._ui.outputGroupBox)
