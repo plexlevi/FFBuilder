@@ -401,5 +401,10 @@
   "Audio analysis failed": "Az audió elemzés nem sikerült",
   "Audio analysis unavailable": "Az audió elemzés nem elérhető",
   "No audio track found": "Nincs audió sáv",
-  "Audio analysis: {var}%": "Audió elemzés: {var}%"
+  "Audio analysis: {var}%": "Audió elemzés: {var}%",
+  "Save audio graphs": "Audió grafikonok mentése",
+  "Saving audio graphs...": "Audió grafikonok mentése...",
+  "Audio graphs saved: {var}": "Audió grafikonok mentve: {var}",
+  "Audio graphs saved: {ok}, failed: {failed}": "Audió grafikonok mentve: {ok}, sikertelen: {failed}",
+  "Audio analysis ({var} files): {pct}%": "Audió elemzés ({var} fájl): {pct}%"
 }

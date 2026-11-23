@@ -87,7 +87,7 @@ class FileMetadataMixin:
 
     def _on_clear_files(self) -> None:
         self.files.clear()
-        self._manual_analysis_path = None
+        self._manual_analysis_paths.clear()
         self._pending_metadata_paths.clear()
         self._pending_loudness_paths.clear()
         self._loudness_progress.clear()
@@ -166,8 +166,13 @@ class FileMetadataMixin:
             play_action = menu.addAction(trs("Play"))
             folder_action = menu.addAction(trs("Open folder"))
             menu.addSeparator()
-            audio_action = menu.addAction(trs("Audio analysis"))
-            menu.addSeparator()
+        audio_action = menu.addAction(trs("Audio analysis"))
+        save_chart_action = menu.addAction(trs("Save chart"))
+        save_chart_action.setEnabled(
+            bool(self.files_list_widget.selectedItems())
+            or self.files_list_widget.currentRow() >= 0
+        )
+        menu.addSeparator()
         delete_action = menu.addAction(trs("Delete selected"))
         menu.addSeparator()
         clear_all_action = menu.addAction(trs("Clear all"))
@@ -185,11 +190,91 @@ class FileMetadataMixin:
             if file_path:
                 QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(file_path).parent)))
         elif action is not None and audio_action is not None and action == audio_action:
-            self._open_audio_analysis()
+            self._run_audio_analysis_for_selection()
+        elif action == save_chart_action:
+            self._save_audio_graphs()
         elif action == delete_action:
             self._delete_selected_file()
         elif action == clear_all_action:
             self._on_clear_files()
+
+    def _run_audio_analysis_for_selection(self) -> None:
+        """Analyse the selected file, or all selected files in the background."""
+        paths = self._selected_media_paths()
+        if not paths:
+            QMessageBox.information(self, trs("No file"), trs("Select a file first."))
+            return
+        if len(paths) == 1:
+            self._open_audio_analysis()
+            return
+
+        ran_any = False
+        for path in paths:
+            info = next(
+                (item for item in self.files if str(item.get("path", "")) == path),
+                {"path": path, "filename": Path(path).name},
+            )
+            self._start_manual_audio_analysis(path, info)
+
+    def _save_audio_graphs(self) -> None:
+        """Save loudness graphs for all selected files into a chosen folder."""
+        from app.gui_qt.dialogs.audio_analysis_dialog import get_all_cached_results
+
+        paths = self._selected_media_paths()
+        if not paths:
+            QMessageBox.information(self, trs("No file"), trs("Select a file first."))
+            return
+
+        folder = QFileDialog.getExistingDirectory(
+            self, trs("Save audio graphs"), str(Path.home() / "Desktop")
+        )
+        if not folder:
+            return
+
+        self._pending_graph_saves.clear()
+        self._graph_save_total = len(paths)
+        self._graph_save_done = 0
+        self._graph_save_failed = 0
+        used_names: set[str] = set()
+
+        for path in paths:
+            out_path = self._unique_graph_output_path(folder, path, used_names)
+            cached = get_all_cached_results(path)
+            if cached:
+                if self._write_loudness_graph(cached[0], out_path):
+                    self._graph_save_done += 1
+                else:
+                    self._graph_save_failed += 1
+                continue
+
+            info = next(
+                (item for item in self.files if str(item.get("path", "")) == path), None
+            )
+            if info is None or not self._ffmpeg_bin or str(info.get("audio", "")) == "no audio":
+                self._graph_save_failed += 1
+                continue
+
+            self._pending_graph_saves[path] = out_path
+            started = self._start_manual_audio_analysis(path, info)
+            if path in self._pending_graph_saves and not started:
+                # The analysis could not start: count it as a failure.
+                self._pending_graph_saves.pop(path, None)
+                self._graph_save_failed += 1
+
+        if self._pending_graph_saves:
+            self._set_status(trs("Saving audio graphs..."), 0)
+        else:
+            self._finish_graph_saves()
+
+    def _unique_graph_output_path(self, folder: str, media_path: str, used: set[str]) -> str:
+        stem = Path(media_path).stem or "graph"
+        candidate = Path(folder) / f"{stem}_loudnessGraph.png"
+        counter = 2
+        while str(candidate).lower() in used or candidate.exists():
+            candidate = Path(folder) / f"{stem}_loudnessGraph_{counter}.png"
+            counter += 1
+        used.add(str(candidate).lower())
+        return str(candidate)
 
     def _show_metadata_context_menu(self, pos) -> None:
         menu = QMenu(self.metadata_tree)

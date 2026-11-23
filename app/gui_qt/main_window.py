@@ -112,7 +112,11 @@ class MainWindow(
         self._queue_clear_done_button: QPushButton | None = None
         self._pending_loudness_paths: set[str] = set()
         self._loudness_progress: dict[str, float] = {}
-        self._manual_analysis_path: str | None = None
+        self._manual_analysis_paths: set[str] = set()
+        self._pending_graph_saves: dict[str, str] = {}
+        self._graph_save_total = 0
+        self._graph_save_done = 0
+        self._graph_save_failed = 0
         self._auto_run_command: str | None = None
         self._queue_pending_start: bool = False
         self._pending_metadata_paths: set[str] = set()
@@ -288,65 +292,91 @@ class MainWindow(
             return
         self._loudness_progress[file_path] = max(0.0, min(1.0, float(progress)))
         self._update_loudness_progress_bar()
-        self._update_manual_analysis_status(file_path)
+        self._update_manual_analysis_status()
 
-    def _update_manual_analysis_status(self, file_path: str) -> None:
+    def _update_manual_analysis_status(self) -> None:
         """Show the on-demand analysis progress in the status bar."""
-        if self._manual_analysis_path != file_path:
+        pending = [
+            path
+            for path in self._manual_analysis_paths
+            if path in self._pending_loudness_paths
+        ]
+        if not pending:
             return
-        pct = int(round(self._loudness_progress.get(file_path, 0.0) * 100))
-        self.files_status_label.setText(
-            trs("Audio analysis: {var}%").replace("{var}", str(pct))
-        )
+        if len(pending) == 1:
+            pct = int(round(self._loudness_progress.get(pending[0], 0.0) * 100))
+            text = trs("Audio analysis: {var}%").replace("{var}", str(pct))
+        else:
+            avg = sum(self._loudness_progress.get(path, 0.0) for path in pending) / len(pending)
+            pct = int(round(max(0.0, min(1.0, avg)) * 100))
+            text = (
+                trs("Audio analysis ({var} files): {pct}%")
+                .replace("{var}", str(len(pending)))
+                .replace("{pct}", str(pct))
+            )
+        self.files_status_label.setText(text)
 
-    def _start_manual_audio_analysis(self, file_path: str, info: dict) -> None:
-        """Run the full audio analysis in the background on demand."""
+    def _apply_cached_audio_analysis(self, file_path: str) -> None:
+        """Apply an already cached analysis to the metadata of a file."""
         from app.gui_qt.dialogs.audio_analysis_dialog import (
             build_file_info_patch,
             get_all_cached_results,
         )
 
+        cached = get_all_cached_results(file_path)
+        if not cached:
+            return
+        patch = build_file_info_patch(cached[0])
+        idx = next(
+            (i for i, item in enumerate(self.files) if str(item.get("path", "")) == file_path),
+            -1,
+        )
+        if idx < 0:
+            return
+        updated = dict(self.files[idx])
+        updated.update(patch)
+        self.files[idx] = updated
+        if self.files_list_widget.currentRow() == idx:
+            self.current_file_info = updated
+            self._render_metadata(updated)
+            self._refresh_command()
+            self._refresh_queue_controls()
+
+    def _start_manual_audio_analysis(self, file_path: str, info: dict) -> bool:
+        """Run the full audio analysis in the background on demand.
+
+        Returns True while an analysis is running for the file.
+        """
+        from app.gui_qt.dialogs.audio_analysis_dialog import get_all_cached_results
+
         if not self._ffmpeg_bin:
             self._set_status(trs("Audio analysis unavailable"), 2500)
-            return
+            return False
         if str(info.get("audio", "")) == "no audio":
             self._set_status(trs("No audio track found"), 2500)
-            return
+            return False
 
-        cached = get_all_cached_results(file_path)
-        if cached:
-            patch = build_file_info_patch(cached[0])
-            idx = next(
-                (i for i, item in enumerate(self.files) if str(item.get("path", "")) == file_path),
-                -1,
-            )
-            if idx >= 0:
-                updated = dict(self.files[idx])
-                updated.update(patch)
-                self.files[idx] = updated
-                if self.files_list_widget.currentRow() == idx:
-                    self.current_file_info = updated
-                    self._render_metadata(updated)
-                    self._refresh_command()
-                    self._refresh_queue_controls()
-            self._set_status(trs("Audio analysis already available"), 2500)
-            return
-
-        self._manual_analysis_path = file_path
+        self._manual_analysis_paths.add(file_path)
         if file_path in self._pending_loudness_paths:
-            self._update_manual_analysis_status(file_path)
-            return
+            self._update_manual_analysis_status()
+            return True
+
+        if get_all_cached_results(file_path):
+            self._apply_cached_audio_analysis(file_path)
+            self._manual_analysis_paths.discard(file_path)
+            self._set_status(trs("Audio analysis already available"), 2500)
+            return False
 
         self._start_loudness_analysis(file_path, info)
         if file_path in self._pending_loudness_paths:
-            self._update_manual_analysis_status(file_path)
-        else:
-            self._manual_analysis_path = None
+            self._update_manual_analysis_status()
+            return True
+        self._manual_analysis_paths.discard(file_path)
+        return False
 
     def _on_loudness_analysis_finished(self, file_path: str, enriched_info: dict) -> None:
-        is_manual = file_path == self._manual_analysis_path
-        if is_manual:
-            self._manual_analysis_path = None
+        is_manual = file_path in self._manual_analysis_paths
+        self._manual_analysis_paths.discard(file_path)
         self._pending_loudness_paths.discard(file_path)
         self._loudness_progress.pop(file_path, None)
 
@@ -361,13 +391,18 @@ class MainWindow(
         self._update_files_status_label()
         self._update_loudness_progress_bar()
 
-        if is_manual:
-            from app.gui_qt.dialogs.audio_analysis_dialog import get_all_cached_results
+        graph_save_started = self._maybe_save_pending_graph(file_path)
 
-            if get_all_cached_results(file_path):
-                self._set_status(trs("Audio analysis complete"), 2500)
+        if is_manual and not graph_save_started and not self._pending_graph_saves:
+            if self._manual_analysis_paths:
+                self._update_manual_analysis_status()
             else:
-                self._set_status(trs("Audio analysis failed"), 3000)
+                from app.gui_qt.dialogs.audio_analysis_dialog import get_all_cached_results
+
+                if get_all_cached_results(file_path):
+                    self._set_status(trs("Audio analysis complete"), 2500)
+                else:
+                    self._set_status(trs("Audio analysis failed"), 3000)
 
         if not self._pending_loudness_paths and self._auto_run_command:
             cmd = self._auto_run_command
@@ -375,6 +410,50 @@ class MainWindow(
             prepared = self._prepare_run_command(cmd)
             if prepared is not None:
                 self._execute_run(prepared)
+
+    def _maybe_save_pending_graph(self, file_path: str) -> bool:
+        """Save the graph of a file that was waiting for its analysis."""
+        out_path = self._pending_graph_saves.pop(file_path, None)
+        if not out_path:
+            return False
+
+        from app.gui_qt.dialogs.audio_analysis_dialog import get_all_cached_results
+
+        cached = get_all_cached_results(file_path)
+        if cached and self._write_loudness_graph(cached[0], out_path):
+            self._graph_save_done += 1
+        else:
+            self._graph_save_failed += 1
+
+        if not self._pending_graph_saves:
+            self._finish_graph_saves()
+        return True
+
+    def _write_loudness_graph(self, result, out_path: str) -> bool:
+        """Render and save one loudness graph as a PNG."""
+        try:
+            from app.gui_qt.dialogs.audio_analysis_dialog import LoudnessGraphWidget
+
+            widget = LoudnessGraphWidget(result)
+            pix = widget.render_to_pixmap(3508, 2481)
+            widget.deleteLater()
+            return bool(pix.save(out_path, "PNG"))
+        except Exception:
+            return False
+
+    def _finish_graph_saves(self) -> None:
+        done = self._graph_save_done
+        failed = self._graph_save_failed
+        self._graph_save_total = 0
+        if failed:
+            text = (
+                trs("Audio graphs saved: {ok}, failed: {failed}")
+                .replace("{ok}", str(done))
+                .replace("{failed}", str(failed))
+            )
+        else:
+            text = trs("Audio graphs saved: {var}").replace("{var}", str(done))
+        self._set_status(text, 5000)
 
     def _update_loudness_progress_bar(self) -> None:
         pending = list(self._pending_loudness_paths)
