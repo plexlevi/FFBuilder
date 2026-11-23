@@ -137,15 +137,14 @@ class UiWiringMixin:
         self._ui.ffmpegConsoleTextEdit.setParent(self._ui.bottomPreviewWidget)
         self._ui.verticalLayout_8.addWidget(self._ui.ffmpegConsoleTextEdit)
 
+        # The status bar lives outside the tabs so it stays visible on every
+        # tab. Only the run button is limited to the Conversion tab.
         self._ui.statusbar.removeWidget(self._ui.statusBarContentWidget)
-        self._ui.statusBarContentWidget.setParent(self._ui.bottomPreviewWidget)
         status_layout = self._ui.statusBarContentWidget.layout()
         if status_layout is not None:
-            # Keep the status text on the same visual line as the content
-            # inside the output/command boxes above.
-            status_layout.setContentsMargins(10, 0, 0, 0)
+            status_layout.setContentsMargins(0, 0, 0, 0)
             status_layout.setSpacing(8)
-        self._ui.verticalLayout_8.addWidget(self._ui.statusBarContentWidget)
+        self._ui.verticalLayout_2.addWidget(self._ui.statusBarContentWidget)
         self._ui.statusBarContentWidget.show()
         self._ui.statusbar.setVisible(False)
 
@@ -169,6 +168,10 @@ class UiWiringMixin:
 
     def _update_conversion_panel_visibility(self, index: int | None = None) -> None:
         """Keep the optional console hidden outside the Conversion tab."""
+        if index is None:
+            index = self.builder_tabs.currentIndex()
+        is_conversion = index == self.builder_tabs.indexOf(self.conversion_tab)
+        self.run_command_button.setVisible(is_conversion)
         self._apply_console_visibility()
 
     def _wire_widgets(self) -> None:

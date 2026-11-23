@@ -61,8 +61,8 @@ class QueueFlowMixin:
         self._queue_tree_widget = self._w(QTreeWidget, "queueTreeWidget")
         _qh = self._queue_tree_widget.header()
         _qh.setStretchLastSection(False)
-        _qh.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        _qh.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        _qh.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        _qh.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         _qh.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self._queue_tree_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self._queue_tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -245,6 +245,9 @@ class QueueFlowMixin:
                     first_selected = item
             if item_id == current_id:
                 self._queue_tree_widget.setCurrentItem(item)
+
+        for column in range(self._queue_tree_widget.columnCount()):
+            self._queue_tree_widget.resizeColumnToContents(column)
 
         self._refresh_queue_controls()
 
