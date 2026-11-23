@@ -261,6 +261,7 @@ class UiWiringMixin:
         self.clear_files_button.clicked.connect(self._delete_selected_file)
         self.clear_files_button.setEnabled(False)
         self.files_list_widget.currentRowChanged.connect(self._on_file_selected)
+        self.files_list_widget.itemDoubleClicked.connect(self._on_file_double_clicked)
         self.files_list_widget.itemSelectionChanged.connect(self._update_clear_files_button)
         self.files_list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.files_list_widget.customContextMenuRequested.connect(self._show_file_context_menu)

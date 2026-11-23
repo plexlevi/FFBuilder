@@ -395,5 +395,11 @@
   "Cut": "Kivágás",
   "Paste": "Beillesztés",
   "Select all": "Összes kijelölése",
-  "Presets": "Presetek"
+  "Presets": "Presetek",
+  "Audio analysis already available": "Az audió elemzés már elérhető",
+  "Audio analysis complete": "Audió elemzés kész",
+  "Audio analysis failed": "Az audió elemzés nem sikerült",
+  "Audio analysis unavailable": "Az audió elemzés nem elérhető",
+  "No audio track found": "Nincs audió sáv",
+  "Audio analysis: {var}%": "Audió elemzés: {var}%"
 }

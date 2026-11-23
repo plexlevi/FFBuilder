@@ -87,6 +87,7 @@ class FileMetadataMixin:
 
     def _on_clear_files(self) -> None:
         self.files.clear()
+        self._manual_analysis_path = None
         self._pending_metadata_paths.clear()
         self._pending_loudness_paths.clear()
         self._loudness_progress.clear()
@@ -300,6 +301,18 @@ class FileMetadataMixin:
             self._render_metadata(updated)
             self._refresh_command()
             self._refresh_queue_controls()
+
+    def _on_file_double_clicked(self, item) -> None:
+        """Start the audio analysis in the background for the double-clicked file."""
+        row = self.files_list_widget.row(item)
+        if row < 0 or row >= len(self.files):
+            return
+        if self.files_list_widget.currentRow() != row:
+            self.files_list_widget.setCurrentRow(row)
+        info = self.files[row]
+        file_path = str(info.get("path", "") or "").strip()
+        if file_path:
+            self._start_manual_audio_analysis(file_path, info)
 
     def _on_file_selected(self, idx: int) -> None:
         info = resolve_selected_file_info(self.files, idx)
