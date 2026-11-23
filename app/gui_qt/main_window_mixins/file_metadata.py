@@ -6,7 +6,15 @@ from pathlib import Path
 
 from PySide6.QtCore import QEvent, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMenu, QMessageBox, QTreeWidgetItem
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFileDialog,
+    QHeaderView,
+    QMenu,
+    QMessageBox,
+    QTreeWidgetItem,
+)
 
 from app.shared.i18n import trs
 from app.gui_qt.main_window_parts import (
@@ -306,8 +314,23 @@ class FileMetadataMixin:
         self._refresh_queue_controls()
 
     def _render_metadata(self, info: dict) -> None:
+        rows = build_metadata_rows(info, _META_FIELDS, _LOUDNESS_KEYS)
         self.metadata_tree.clear()
-        for label, value in build_metadata_rows(info, _META_FIELDS, _LOUDNESS_KEYS):
-            item = QTreeWidgetItem([label, value])
+
+        # Two field/value pairs per row so more data fits without scrolling.
+        pair_count = (len(rows) + 1) // 2
+        left = rows[:pair_count]
+        right = rows[pair_count:]
+        for idx in range(pair_count):
+            left_pair = left[idx]
+            right_pair = right[idx] if idx < len(right) else ("", "")
+            item = QTreeWidgetItem(
+                [left_pair[0], left_pair[1], right_pair[0], right_pair[1]]
+            )
             self.metadata_tree.addTopLevelItem(item)
-        self.metadata_tree.resizeColumnToContents(0)
+
+        header = self.metadata_tree.header()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)

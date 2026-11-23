@@ -140,7 +140,9 @@ class UiWiringMixin:
         self._ui.statusBarContentWidget.setParent(self._ui.bottomPreviewWidget)
         status_layout = self._ui.statusBarContentWidget.layout()
         if status_layout is not None:
-            status_layout.setContentsMargins(0, 0, 0, 0)
+            # Keep the status text on the same visual line as the content
+            # inside the output/command boxes above.
+            status_layout.setContentsMargins(10, 0, 0, 0)
             status_layout.setSpacing(8)
         self._ui.verticalLayout_8.addWidget(self._ui.statusBarContentWidget)
         self._ui.statusBarContentWidget.show()
@@ -168,8 +170,14 @@ class UiWiringMixin:
         self.clear_files_button = self._w(QPushButton, "clearFilesButton")
         self.files_list_widget = self._w(QListWidget, "filesListWidget")
         self.metadata_tree = self._w(QTreeWidget, "metadataTreeWidget")
-        # Metadata is meant to read as plain content: no inner frame.
+        # Metadata is meant to read as plain content: no inner frame, and it
+        # should span the same width as the widgets above and below it.
         self.metadata_tree.setFrameShape(QFrame.Shape.NoFrame)
+        self.metadata_tree.setColumnCount(4)
+        self.metadata_tree.setHeaderLabels(
+            [trs("Field"), trs("Value"), trs("Field"), trs("Value")]
+        )
+        self._ui.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.files_status_label = self._w(QLabel, "statusFilesLabel")
         self.loudness_progress_bar = self._w(QProgressBar, "statusEbuProgressBar")
 

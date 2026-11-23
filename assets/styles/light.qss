@@ -94,3 +94,7 @@ QTreeWidget {
 QGroupBox#metadataGroupBox {
     border: none;
 }
+QGroupBox#metadataGroupBox::title {
+    left: 0px;
+    padding: 0px;
+}
