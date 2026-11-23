@@ -99,6 +99,12 @@ class UiWiringMixin:
         self._ui.gridLayout.setColumnStretch(1, 1)
         self._ui.outputFormatComboBox.setMinimumWidth(110)
         self._ui.formatDescriptionLabel.setMinimumWidth(150)
+        self._ui.outputFileLabelContainer.setMinimumWidth(0)
+        self._ui.formatLabelContainer.setMinimumWidth(0)
+        self._ui.outputFileLabelContainer.hide()
+        self._ui.formatLabelContainer.hide()
+        self._ui.outputPathLineEdit.setToolTip(trs("Output file"))
+        self._ui.outputFormatComboBox.setToolTip(trs("Format"))
         self._ui.verticalLayout_8.addWidget(self._ui.outputGroupBox)
 
         self.builder_tabs.insertTab(0, self.conversion_tab, trs("Conversion"))
