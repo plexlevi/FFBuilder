@@ -6,7 +6,14 @@ from pathlib import Path
 
 from PySide6.QtCore import QProcess, Qt, QTimer
 from PySide6.QtGui import QGuiApplication, QTextCursor
-from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFileDialog,
+    QMenu,
+    QMessageBox,
+    QVBoxLayout,
+)
 
 from app.domain import cmd_macros
 from app.gui_qt.dialogs.settings_dialog import SettingsDialog
@@ -363,6 +370,38 @@ class RunFlowMixin:
         self._apply_console_visibility()
         if self.current_file_info:
             self._render_metadata(self.current_file_info)
+
+    def _show_command_context_menu(self, pos) -> None:
+        menu = QMenu(self.command_preview)
+        copy_action = menu.addAction(trs("Copy"))
+        clear_action = menu.addAction(trs("Clear"))
+        menu.addSeparator()
+
+        undo_action = menu.addAction(trs("Undo"))
+        undo_action.setEnabled(self.command_preview.document().isUndoAvailable())
+        undo_action.triggered.connect(self.command_preview.undo)
+
+        redo_action = menu.addAction(trs("Redo"))
+        redo_action.setEnabled(self.command_preview.document().isRedoAvailable())
+        redo_action.triggered.connect(self.command_preview.redo)
+        menu.addSeparator()
+
+        cut_action = menu.addAction(trs("Cut"))
+        cut_action.setEnabled(self.command_preview.textCursor().hasSelection())
+        cut_action.triggered.connect(self.command_preview.cut)
+
+        paste_action = menu.addAction(trs("Paste"))
+        paste_action.setEnabled(self.command_preview.canPaste())
+        paste_action.triggered.connect(self.command_preview.paste)
+
+        select_all_action = menu.addAction(trs("Select all"))
+        select_all_action.triggered.connect(self.command_preview.selectAll)
+
+        action = menu.exec(self.command_preview.mapToGlobal(pos))
+        if action == copy_action:
+            self._copy_command()
+        elif action == clear_action:
+            self.command_preview.clear()
 
     def _copy_command(self) -> None:
         cmd = cmd_macros.ensure_overwrite_flag(self.command_preview.toPlainText().strip())

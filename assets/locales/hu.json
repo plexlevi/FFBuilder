@@ -389,5 +389,10 @@
   "Load preset": "Preset betöltése",
   "No templates": "Nincsenek sablonok",
   "Preset loaded: {var}": "Preset betöltve: {var}",
-  "Choose a preset": "Válassz presetet"
+  "Choose a preset": "Válassz presetet",
+  "Undo": "Visszavonás",
+  "Redo": "Újra",
+  "Cut": "Kivágás",
+  "Paste": "Beillesztés",
+  "Select all": "Összes kijelölése"
 }

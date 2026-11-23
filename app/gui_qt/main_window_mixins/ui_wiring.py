@@ -180,6 +180,8 @@ class UiWiringMixin:
 
         self.command_preview = self._w(QPlainTextEdit, "commandPreviewTextEdit")
         self.command_preview.textChanged.connect(self._on_command_text_edited)
+        self.command_preview.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.command_preview.customContextMenuRequested.connect(self._show_command_context_menu)
 
         self.preview_title_label = self._w(QLabel, "previewTitleLabel")
         self.reset_command_button = QPushButton(trs("Default state"), self._ui.bottomPreviewWidget)
@@ -234,6 +236,15 @@ class UiWiringMixin:
         self.visual_editor_button = self._w(QPushButton, "visualEditorButton")
         self.visual_editor_button.clicked.connect(self._open_visual_editor)
         self._ve_dialog: QDialog | None = None
+
+        # The per-command buttons are no longer needed in a separate row.
+        # Copy/Clear live in the command context menu; the visual editor moves
+        # next to the Default state button.
+        self._ui.horizontalLayout_4.removeWidget(self.visual_editor_button)
+        self.preview_header_layout.insertWidget(2, self.visual_editor_button)
+        self.copy_command_button.hide()
+        self.clear_command_button.hide()
+        self._ui.verticalLayout_8.removeItem(self._ui.horizontalLayout_4)
 
         self.builder_tabs.currentChanged.connect(lambda _idx: self._refresh_command())
         self.builder_tabs.currentChanged.connect(self._update_conversion_panel_visibility)
