@@ -89,3 +89,8 @@ QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
 QTreeWidget {
     alternate-background-color: #f5f5f5;
 }
+
+/* File metadata reads as plain content, without a box around it. */
+QGroupBox#metadataGroupBox {
+    border: none;
+}

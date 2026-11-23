@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QAbstractScrollArea,
     QComboBox,
     QDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -167,6 +168,8 @@ class UiWiringMixin:
         self.clear_files_button = self._w(QPushButton, "clearFilesButton")
         self.files_list_widget = self._w(QListWidget, "filesListWidget")
         self.metadata_tree = self._w(QTreeWidget, "metadataTreeWidget")
+        # Metadata is meant to read as plain content: no inner frame.
+        self.metadata_tree.setFrameShape(QFrame.Shape.NoFrame)
         self.files_status_label = self._w(QLabel, "statusFilesLabel")
         self.loudness_progress_bar = self._w(QProgressBar, "statusEbuProgressBar")
 
